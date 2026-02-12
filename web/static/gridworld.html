@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Q-Learning GridWorld - RL 学习平台</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- 导航栏 -->
+        <nav class="nav-bar">
+            <a href="/" class="nav-link">01 多臂老虎机</a>
+            <a href="/gridworld" class="nav-link active">02 Q-Learning GridWorld</a>
+        </nav>
+
+        <h1>Q-Learning GridWorld 实验</h1>
+        <p class="subtitle">在网格世界中训练智能体找到最优路径——从无状态到有状态的 RL</p>
+
+        <!-- 参数区 -->
+        <div class="params-panel">
+            <h2>实验参数</h2>
+            <div class="params-grid">
+                <div class="param-item">
+                    <label for="grid-size">网格大小</label>
+                    <select id="grid-size">
+                        <option value="4">4 × 4</option>
+                        <option value="5" selected>5 × 5</option>
+                        <option value="6">6 × 6</option>
+                        <option value="7">7 × 7</option>
+                    </select>
+                    <span class="hint">网格的行列数</span>
+                </div>
+                <div class="param-item">
+                    <label for="gw-episodes">训练回合 (episodes)</label>
+                    <input type="number" id="gw-episodes" value="500" min="10" max="5000">
+                    <span class="hint">10 ~ 5000</span>
+                </div>
+                <div class="param-item">
+                    <label for="gw-alpha">学习率 α</label>
+                    <input type="number" id="gw-alpha" value="0.1" min="0.01" max="1" step="0.01">
+                    <span class="hint">每次更新的步长</span>
+                </div>
+                <div class="param-item">
+                    <label for="gw-gamma">折扣因子 γ</label>
+                    <input type="number" id="gw-gamma" value="0.99" min="0" max="1" step="0.01">
+                    <span class="hint">越接近1越重视未来奖励</span>
+                </div>
+                <div class="param-item">
+                    <label for="gw-epsilon">初始探索率 ε</label>
+                    <input type="number" id="gw-epsilon" value="1.0" min="0" max="1" step="0.1">
+                    <span class="hint">初始随机探索概率</span>
+                </div>
+                <div class="param-item">
+                    <label for="gw-decay">ε 衰减率</label>
+                    <input type="number" id="gw-decay" value="0.995" min="0.9" max="1" step="0.001">
+                    <span class="hint">每回合 ε *= 衰减率</span>
+                </div>
+            </div>
+            <button id="gw-run-btn" onclick="runGridWorld()">▶ 开始训练</button>
+            <span id="gw-status-text"></span>
+        </div>
+
+        <!-- 图表区 -->
+        <div class="charts-panel" id="gw-charts-panel" style="display:none;">
+            <div class="chart-box">
+                <div id="gw-reward-chart" style="width:100%;height:350px;"></div>
+            </div>
+            <div class="chart-box">
+                <div id="gw-steps-chart" style="width:100%;height:350px;"></div>
+            </div>
+        </div>
+
+        <!-- 策略网格 -->
+        <div class="summary-panel" id="gw-policy-panel" style="display:none;">
+            <h2>学到的策略</h2>
+            <p class="hint" style="margin-bottom:12px;">箭头 = 该位置最优动作方向，背景色 = 状态价值 V(s)</p>
+            <div id="gw-grid-container" class="grid-container"></div>
+        </div>
+
+        <!-- 摘要 -->
+        <div class="summary-panel" id="gw-summary-panel" style="display:none;">
+            <h2>训练结果</h2>
+            <div id="gw-summary-content"></div>
+        </div>
+
+        <!-- 概念说明 -->
+        <div class="info-panel">
+            <h2>核心概念</h2>
+            <ul>
+                <li><strong>状态 (State)</strong>：智能体在网格中的位置——上个实验没有状态，这里有了</li>
+                <li><strong>Q 表 Q(s,a)</strong>：记录"在状态 s 做动作 a 的长期价值"，训练就是更新这张表</li>
+                <li><strong>TD 更新</strong>：Q(s,a) += α * [r + γ*maxQ(s',a') - Q(s,a)]，每步都学习</li>
+                <li><strong>ε 衰减</strong>：训练初期多探索（ε 大），后期多利用（ε 小）</li>
+                <li><strong>折扣因子 γ</strong>：γ=0 只看眼前，γ→1 重视长远——控制"近视 vs 远视"</li>
+            </ul>
+        </div>
+    </div>
+
+    <script src="/static/gridworld.js"></script>
+</body>
+</html>

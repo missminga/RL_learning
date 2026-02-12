@@ -85,7 +85,7 @@ h2 {
     margin-top: 2px;
 }
 
-#run-btn {
+#run-btn, #gw-run-btn {
     background: #4f7df9;
     color: #fff;
     border: none;
@@ -96,19 +96,133 @@ h2 {
     transition: background 0.2s;
 }
 
-#run-btn:hover {
+#run-btn:hover, #gw-run-btn:hover {
     background: #3a66d9;
 }
 
-#run-btn:disabled {
+#run-btn:disabled, #gw-run-btn:disabled {
     background: #a0b4f0;
     cursor: not-allowed;
 }
 
-#status-text {
+#status-text, #gw-status-text {
     margin-left: 12px;
     font-size: 0.9rem;
     color: #666;
+}
+
+/* 导航栏 */
+.nav-bar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+    padding: 8px;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.nav-link {
+    padding: 8px 16px;
+    border-radius: 6px;
+    text-decoration: none;
+    color: #555;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: background 0.2s, color 0.2s;
+}
+
+.nav-link:hover {
+    background: #f0f4ff;
+    color: #4f7df9;
+}
+
+.nav-link.active {
+    background: #4f7df9;
+    color: #fff;
+}
+
+/* select 样式 */
+.param-item select {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #d0d5dd;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    background: #fff;
+}
+
+.param-item select:focus {
+    outline: none;
+    border-color: #4f7df9;
+    box-shadow: 0 0 0 2px rgba(79,125,249,0.2);
+}
+
+/* GridWorld 策略网格 */
+.grid-container {
+    display: grid;
+    gap: 3px;
+    max-width: 420px;
+    margin: 0 auto;
+}
+
+.grid-cell {
+    aspect-ratio: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #d0d5dd;
+    border-radius: 4px;
+    font-size: 1.2rem;
+    cursor: default;
+    position: relative;
+    min-height: 50px;
+}
+
+.cell-label {
+    font-weight: bold;
+    font-size: 1.1rem;
+}
+
+.goal-label { color: #fff; }
+.trap-label { color: #fff; }
+.wall-label { color: #fff; }
+
+.cell-arrow {
+    font-size: 1.4rem;
+    font-weight: bold;
+    color: #333;
+}
+
+/* 摘要统计卡片 */
+.summary-stats {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.stat-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 12px 24px;
+    background: #f8f9fb;
+    border-radius: 8px;
+    min-width: 140px;
+}
+
+.stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #4f7df9;
+}
+
+.stat-label {
+    font-size: 0.8rem;
+    color: #888;
+    margin-top: 4px;
 }
 
 /* 图表 */
