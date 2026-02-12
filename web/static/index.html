@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>多臂老虎机实验平台</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>🎰 多臂老虎机实验平台</h1>
+        <p class="subtitle">通过调整参数，直观感受探索与利用的平衡 (ε-Greedy 策略)</p>
+
+        <!-- 参数区 -->
+        <div class="params-panel">
+            <h2>实验参数</h2>
+            <div class="params-grid">
+                <div class="param-item">
+                    <label for="epsilons">ε 值（逗号分隔）</label>
+                    <input type="text" id="epsilons" value="0, 0.01, 0.1" placeholder="如: 0, 0.01, 0.1">
+                    <span class="hint">最多 10 个，范围 0~1</span>
+                </div>
+                <div class="param-item">
+                    <label for="steps">步数 (steps)</label>
+                    <input type="number" id="steps" value="1000" min="10" max="10000">
+                    <span class="hint">10 ~ 10000</span>
+                </div>
+                <div class="param-item">
+                    <label for="n_runs">重复次数 (n_runs)</label>
+                    <input type="number" id="n_runs" value="200" min="1" max="2000">
+                    <span class="hint">1 ~ 2000，越大越平滑</span>
+                </div>
+                <div class="param-item">
+                    <label for="k">老虎机数量 (k)</label>
+                    <input type="number" id="k" value="10" min="2" max="50">
+                    <span class="hint">2 ~ 50</span>
+                </div>
+            </div>
+            <button id="run-btn" onclick="runExperiment()">▶ 运行实验</button>
+            <span id="status-text"></span>
+        </div>
+
+        <!-- 图表区 -->
+        <div class="charts-panel" id="charts-panel" style="display:none;">
+            <div class="chart-box">
+                <div id="reward-chart" style="width:100%;height:400px;"></div>
+            </div>
+            <div class="chart-box">
+                <div id="optimal-chart" style="width:100%;height:400px;"></div>
+            </div>
+        </div>
+
+        <!-- 摘要表格 -->
+        <div class="summary-panel" id="summary-panel" style="display:none;">
+            <h2>结果摘要（最后 100 步平均值）</h2>
+            <table id="summary-table">
+                <thead>
+                    <tr>
+                        <th>ε 值</th>
+                        <th>平均奖励</th>
+                        <th>最优动作比例</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <!-- 概念说明 -->
+        <div class="info-panel">
+            <h2>概念说明</h2>
+            <ul>
+                <li><strong>ε = 0（纯贪心）</strong>：永远选当前估计最好的机器，容易陷入次优选择</li>
+                <li><strong>ε 较小（如 0.01）</strong>：少量探索，长期效果好但学得慢</li>
+                <li><strong>ε 较大（如 0.1）</strong>：充分探索，学得快但持续浪费部分机会在随机探索上</li>
+            </ul>
+        </div>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

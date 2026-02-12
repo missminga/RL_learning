@@ -1,0 +1,174 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans SC", sans-serif;
+    background: #f5f7fa;
+    color: #333;
+    line-height: 1.6;
+}
+
+.container {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 24px 16px;
+}
+
+h1 {
+    text-align: center;
+    font-size: 1.8rem;
+    margin-bottom: 4px;
+}
+
+.subtitle {
+    text-align: center;
+    color: #666;
+    margin-bottom: 24px;
+}
+
+h2 {
+    font-size: 1.1rem;
+    margin-bottom: 12px;
+    color: #444;
+}
+
+/* 参数面板 */
+.params-panel {
+    background: #fff;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.params-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+@media (max-width: 600px) {
+    .params-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.param-item label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 4px;
+    font-size: 0.9rem;
+}
+
+.param-item input {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #d0d5dd;
+    border-radius: 6px;
+    font-size: 0.95rem;
+}
+
+.param-item input:focus {
+    outline: none;
+    border-color: #4f7df9;
+    box-shadow: 0 0 0 2px rgba(79,125,249,0.2);
+}
+
+.param-item .hint {
+    display: block;
+    font-size: 0.75rem;
+    color: #888;
+    margin-top: 2px;
+}
+
+#run-btn {
+    background: #4f7df9;
+    color: #fff;
+    border: none;
+    padding: 10px 28px;
+    border-radius: 6px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+#run-btn:hover {
+    background: #3a66d9;
+}
+
+#run-btn:disabled {
+    background: #a0b4f0;
+    cursor: not-allowed;
+}
+
+#status-text {
+    margin-left: 12px;
+    font-size: 0.9rem;
+    color: #666;
+}
+
+/* 图表 */
+.charts-panel {
+    margin-bottom: 20px;
+}
+
+.chart-box {
+    background: #fff;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+/* 摘要表格 */
+.summary-panel {
+    background: #fff;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+#summary-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+#summary-table th,
+#summary-table td {
+    padding: 10px 14px;
+    text-align: center;
+    border-bottom: 1px solid #eee;
+}
+
+#summary-table th {
+    background: #f8f9fb;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+#summary-table td {
+    font-size: 0.95rem;
+}
+
+/* 概念说明 */
+.info-panel {
+    background: #fff;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.info-panel ul {
+    padding-left: 20px;
+}
+
+.info-panel li {
+    margin-bottom: 6px;
+    font-size: 0.9rem;
+    color: #555;
+}
