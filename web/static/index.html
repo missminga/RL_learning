@@ -3,13 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>多臂老虎机实验平台</title>
+    <title>RL 学习平台</title>
     <link rel="stylesheet" href="/static/style.css">
     <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
 </head>
 <body>
     <div class="container">
-        <h1>🎰 多臂老虎机实验平台</h1>
+        <!-- 导航栏 -->
+        <nav class="nav-bar">
+            <a href="/" class="nav-link active">01 多臂老虎机</a>
+            <a href="/gridworld" class="nav-link">02 Q-Learning GridWorld</a>
+        </nav>
+
+        <h1>多臂老虎机实验平台</h1>
         <p class="subtitle">通过调整参数，直观感受探索与利用的平衡 (ε-Greedy 策略)</p>
 
         <!-- 参数区 -->
