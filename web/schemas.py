@@ -86,3 +86,41 @@ class GridWorldRunResponse(BaseModel):
     avg_steps: list[float]
     grid: list[list[GridCellInfo]]
     summary: GridWorldSummary
+
+
+# ===== DQN CartPole =====
+
+
+class CartPoleRunRequest(BaseModel):
+    """DQN CartPole 实验请求参数"""
+
+    episodes: int = Field(default=300, ge=10, le=2000, description="训练回合数")
+    hidden_dim: int = Field(default=128, ge=16, le=512, description="隐藏层神经元数")
+    lr: float = Field(default=1e-3, gt=0, le=0.1, description="学习率")
+    gamma: float = Field(default=0.99, ge=0, le=1, description="折扣因子")
+    epsilon: float = Field(default=1.0, ge=0, le=1, description="初始探索率")
+    epsilon_decay: float = Field(default=0.995, gt=0, le=1, description="ε 衰减率")
+    epsilon_min: float = Field(default=0.01, ge=0, le=1, description="最小 ε")
+    buffer_capacity: int = Field(default=10000, ge=100, le=100000, description="经验回放容量")
+    batch_size: int = Field(default=64, ge=8, le=512, description="批大小")
+    target_update_freq: int = Field(default=10, ge=1, le=100, description="目标网络更新频率")
+    n_runs: int = Field(default=1, ge=1, le=5, description="重复训练次数")
+
+
+class CartPoleSummary(BaseModel):
+    """CartPole 实验摘要"""
+
+    final_avg_reward: float
+    final_avg_steps: float
+    max_reward: float
+    solved_episode: int | None
+
+
+class CartPoleRunResponse(BaseModel):
+    """DQN CartPole 实验响应"""
+
+    episodes: int
+    avg_rewards: list[float]
+    avg_steps: list[float]
+    avg_losses: list[float]
+    summary: CartPoleSummary
