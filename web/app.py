@@ -32,6 +32,7 @@ async def gridworld_page():
     return FileResponse(str(static_dir / "gridworld.html"))
 
 
+
 @app.get("/cartpole")
 async def cartpole_page():
     """DQN CartPole 页面"""
