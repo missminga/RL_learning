@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DQN CartPole - RL 学习平台</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- 导航栏 -->
+        <nav class="nav-bar">
+            <a href="/" class="nav-link">01 多臂老虎机</a>
+            <a href="/gridworld" class="nav-link">02 Q-Learning GridWorld</a>
+            <a href="/cartpole" class="nav-link active">03 DQN CartPole</a>
+        </nav>
+
+        <h1>DQN CartPole 实验</h1>
+        <p class="subtitle">用深度 Q 网络解决连续状态空间问题——从 Q 表到神经网络</p>
+
+        <!-- 参数区 -->
+        <div class="params-panel">
+            <h2>实验参数</h2>
+            <div class="params-grid">
+                <div class="param-item">
+                    <label for="cp-episodes">训练回合 (episodes)</label>
+                    <input type="number" id="cp-episodes" value="300" min="10" max="2000">
+                    <span class="hint">10 ~ 2000</span>
+                </div>
+                <div class="param-item">
+                    <label for="cp-hidden">隐藏层神经元数</label>
+                    <select id="cp-hidden">
+                        <option value="64">64</option>
+                        <option value="128" selected>128</option>
+                        <option value="256">256</option>
+                    </select>
+                    <span class="hint">网络每层的宽度</span>
+                </div>
+                <div class="param-item">
+                    <label for="cp-lr">学习率 (lr)</label>
+                    <input type="number" id="cp-lr" value="0.001" min="0.0001" max="0.1" step="0.0001">
+                    <span class="hint">Adam 优化器学习率</span>
+                </div>
+                <div class="param-item">
+                    <label for="cp-gamma">折扣因子 γ</label>
+                    <input type="number" id="cp-gamma" value="0.99" min="0" max="1" step="0.01">
+                    <span class="hint">未来奖励的折扣</span>
+                </div>
+                <div class="param-item">
+                    <label for="cp-epsilon">初始探索率 ε</label>
+                    <input type="number" id="cp-epsilon" value="1.0" min="0" max="1" step="0.1">
+                    <span class="hint">初始随机探索概率</span>
+                </div>
+                <div class="param-item">
+                    <label for="cp-decay">ε 衰减率</label>
+                    <input type="number" id="cp-decay" value="0.995" min="0.9" max="1" step="0.001">
+                    <span class="hint">每回合 ε *= 衰减率</span>
+                </div>
+                <div class="param-item">
+                    <label for="cp-buffer">经验回放容量</label>
+                    <select id="cp-buffer">
+                        <option value="5000">5000</option>
+                        <option value="10000" selected>10000</option>
+                        <option value="50000">50000</option>
+                    </select>
+                    <span class="hint">回忆库能存多少条经验</span>
+                </div>
+                <div class="param-item">
+                    <label for="cp-batch">批大小 (batch_size)</label>
+                    <select id="cp-batch">
+                        <option value="32">32</option>
+                        <option value="64" selected>64</option>
+                        <option value="128">128</option>
+                    </select>
+                    <span class="hint">每次训练抽多少条经验</span>
+                </div>
+                <div class="param-item">
+                    <label for="cp-target-freq">目标网络更新频率</label>
+                    <input type="number" id="cp-target-freq" value="10" min="1" max="100">
+                    <span class="hint">每 N 回合同步一次</span>
+                </div>
+            </div>
+            <button id="cp-run-btn" onclick="runCartPole()">▶ 开始训练</button>
+            <span id="cp-status-text"></span>
+        </div>
+
+        <!-- 图表区 -->
+        <div class="charts-panel" id="cp-charts-panel" style="display:none;">
+            <div class="chart-box">
+                <div id="cp-reward-chart" style="width:100%;height:350px;"></div>
+            </div>
+            <div class="chart-box">
+                <div id="cp-loss-chart" style="width:100%;height:350px;"></div>
+            </div>
+        </div>
+
+        <!-- 摘要 -->
+        <div class="summary-panel" id="cp-summary-panel" style="display:none;">
+            <h2>训练结果</h2>
+            <div id="cp-summary-content"></div>
+        </div>
+
+        <!-- 概念说明 -->
+        <div class="info-panel">
+            <h2>核心概念</h2>
+            <ul>
+                <li><strong>连续状态</strong>：CartPole 的状态是 4 个浮点数，Q 表无法存储 → 用神经网络逼近 Q(s,a)</li>
+                <li><strong>经验回放 (Replay Buffer)</strong>：把经历存起来随机抽样，打破数据的时间相关性</li>
+                <li><strong>目标网络 (Target Network)</strong>：用"慢更新"的网络计算目标值，避免自己追自己的不稳定</li>
+                <li><strong>网络结构</strong>：状态(4维) → 全连接层 → ReLU → 全连接层 → 动作Q值(2维)</li>
+                <li><strong>解决标准</strong>：连续 100 回合平均奖励 >= 475 即视为"解决"CartPole</li>
+            </ul>
+        </div>
+    </div>
+
+    <script src="/static/cartpole.js"></script>
+</body>
+</html>

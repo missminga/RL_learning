@@ -85,7 +85,7 @@ h2 {
     margin-top: 2px;
 }
 
-#run-btn, #gw-run-btn {
+#run-btn, #gw-run-btn, #cp-run-btn {
     background: #4f7df9;
     color: #fff;
     border: none;
@@ -96,16 +96,16 @@ h2 {
     transition: background 0.2s;
 }
 
-#run-btn:hover, #gw-run-btn:hover {
+#run-btn:hover, #gw-run-btn:hover, #cp-run-btn:hover {
     background: #3a66d9;
 }
 
-#run-btn:disabled, #gw-run-btn:disabled {
+#run-btn:disabled, #gw-run-btn:disabled, #cp-run-btn:disabled {
     background: #a0b4f0;
     cursor: not-allowed;
 }
 
-#status-text, #gw-status-text {
+#status-text, #gw-status-text, #cp-status-text {
     margin-left: 12px;
     font-size: 0.9rem;
     color: #666;
