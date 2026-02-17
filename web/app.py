@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
-from web.routers import bandit, gridworld, cartpole
+from web.routers import bandit, gridworld, cartpole, policy_gradient
 
 app = FastAPI(title="RL 学习平台")
 
@@ -14,6 +14,7 @@ app = FastAPI(title="RL 学习平台")
 app.include_router(bandit.router)
 app.include_router(gridworld.router)
 app.include_router(cartpole.router)
+app.include_router(policy_gradient.router)
 
 # 静态文件目录
 static_dir = Path(__file__).parent / "static"
@@ -37,3 +38,9 @@ async def gridworld_page():
 async def cartpole_page():
     """DQN CartPole 页面"""
     return FileResponse(str(static_dir / "cartpole.html"))
+
+
+@app.get("/policy-gradient")
+async def policy_gradient_page():
+    """REINFORCE Policy Gradient 页面"""
+    return FileResponse(str(static_dir / "policy_gradient.html"))
