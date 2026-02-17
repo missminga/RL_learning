@@ -124,3 +124,35 @@ class CartPoleRunResponse(BaseModel):
     avg_steps: list[float]
     avg_losses: list[float]
     summary: CartPoleSummary
+
+
+# ===== REINFORCE Policy Gradient =====
+
+
+class ReinforceRunRequest(BaseModel):
+    """REINFORCE Policy Gradient 实验请求参数"""
+
+    episodes: int = Field(default=500, ge=10, le=2000, description="训练回合数")
+    hidden_dim: int = Field(default=128, ge=16, le=512, description="隐藏层神经元数")
+    lr: float = Field(default=1e-3, gt=0, le=0.1, description="学习率")
+    gamma: float = Field(default=0.99, ge=0, le=1, description="折扣因子")
+    n_runs: int = Field(default=1, ge=1, le=5, description="重复训练次数")
+
+
+class ReinforceSummary(BaseModel):
+    """REINFORCE 实验摘要"""
+
+    final_avg_reward: float
+    final_avg_steps: float
+    max_reward: float
+    solved_episode: int | None
+
+
+class ReinforceRunResponse(BaseModel):
+    """REINFORCE Policy Gradient 实验响应"""
+
+    episodes: int
+    avg_rewards: list[float]
+    avg_steps: list[float]
+    avg_losses: list[float]
+    summary: ReinforceSummary
