@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>REINFORCE Policy Gradient - RL 学习平台</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- 导航栏 -->
+        <nav class="nav-bar">
+            <a href="/" class="nav-link">01 多臂老虎机</a>
+            <a href="/gridworld" class="nav-link">02 Q-Learning GridWorld</a>
+            <a href="/cartpole" class="nav-link">03 DQN CartPole</a>
+            <a href="/policy-gradient" class="nav-link active">04 REINFORCE</a>
+        </nav>
+
+        <h1>REINFORCE Policy Gradient 实验</h1>
+        <p class="subtitle">从 Value-Based 到 Policy-Based——直接学习策略，不再需要 Q 值</p>
+
+        <!-- 参数区 -->
+        <div class="params-panel">
+            <h2>实验参数</h2>
+            <div class="params-grid">
+                <div class="param-item">
+                    <label for="pg-episodes">训练回合 (episodes)</label>
+                    <input type="number" id="pg-episodes" value="500" min="10" max="2000">
+                    <span class="hint">10 ~ 2000</span>
+                </div>
+                <div class="param-item">
+                    <label for="pg-hidden">隐藏层神经元数</label>
+                    <select id="pg-hidden">
+                        <option value="64">64</option>
+                        <option value="128" selected>128</option>
+                        <option value="256">256</option>
+                    </select>
+                    <span class="hint">策略网络每层的宽度</span>
+                </div>
+                <div class="param-item">
+                    <label for="pg-lr">学习率 (lr)</label>
+                    <input type="number" id="pg-lr" value="0.001" min="0.0001" max="0.1" step="0.0001">
+                    <span class="hint">Adam 优化器学习率</span>
+                </div>
+                <div class="param-item">
+                    <label for="pg-gamma">折扣因子 γ</label>
+                    <input type="number" id="pg-gamma" value="0.99" min="0" max="1" step="0.01">
+                    <span class="hint">未来奖励的折扣</span>
+                </div>
+                <div class="param-item">
+                    <label for="pg-nruns">重复训练次数</label>
+                    <input type="number" id="pg-nruns" value="1" min="1" max="5">
+                    <span class="hint">多次取平均，更稳定</span>
+                </div>
+            </div>
+            <button id="pg-run-btn" onclick="runPolicyGradient()">▶ 开始训练</button>
+            <span id="pg-status-text"></span>
+        </div>
+
+        <!-- 图表区 -->
+        <div class="charts-panel" id="pg-charts-panel" style="display:none;">
+            <div class="chart-box">
+                <div id="pg-reward-chart" style="width:100%;height:350px;"></div>
+            </div>
+            <div class="chart-box">
+                <div id="pg-loss-chart" style="width:100%;height:350px;"></div>
+            </div>
+        </div>
+
+        <!-- 摘要 -->
+        <div class="summary-panel" id="pg-summary-panel" style="display:none;">
+            <h2>训练结果</h2>
+            <div id="pg-summary-content"></div>
+        </div>
+
+        <!-- 概念说明 -->
+        <div class="info-panel">
+            <h2>核心概念</h2>
+            <ul>
+                <li><strong>策略梯度</strong>：直接学习策略 π(a|s)（在状态 s 下选各动作的概率），不需要先学 Q 值</li>
+                <li><strong>REINFORCE</strong>：跑完整个回合 → 算折扣回报 G_t → 强化高回报动作、抑制低回报动作</li>
+                <li><strong>天然探索</strong>：按概率采样动作，不需要 ε-贪心，自带随机性</li>
+                <li><strong>回报标准化</strong>：减均值除标准差，让好动作得到正强化、差动作得到负强化</li>
+                <li><strong>更简洁</strong>：不需要经验回放、目标网络——比 DQN 少了很多组件</li>
+                <li><strong>解决标准</strong>：连续 100 回合平均奖励 >= 475 即视为"解决"CartPole</li>
+            </ul>
+
+            <h2>DQN vs REINFORCE 对比</h2>
+            <table>
+                <thead>
+                    <tr><th>特性</th><th>DQN</th><th>REINFORCE</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>学什么</td><td>Q 值（动作价值）</td><td>策略（动作概率）</td></tr>
+                    <tr><td>选动作</td><td>ε-贪心 + argmax Q</td><td>按概率采样</td></tr>
+                    <tr><td>更新时机</td><td>每一步（在线）</td><td>跑完整个回合</td></tr>
+                    <tr><td>经验回放</td><td>需要</td><td>不需要</td></tr>
+                    <tr><td>目标网络</td><td>需要</td><td>不需要</td></tr>
+                    <tr><td>连续动作空间</td><td>不支持</td><td>支持</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script src="/static/policy_gradient.js"></script>
+</body>
+</html>
