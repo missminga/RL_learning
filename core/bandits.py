@@ -7,6 +7,8 @@ CLI 脚本和 Web API 共用此模块。
 
 import numpy as np
 
+from core.random_utils import set_global_seed
+
 
 class MultiArmedBandit:
     """多臂老虎机环境"""
@@ -47,7 +49,7 @@ def epsilon_greedy(q_estimates, epsilon):
         return np.argmax(q_estimates)
 
 
-def run_experiment(k=10, steps=1000, epsilon=0.1):
+def run_experiment(k=10, steps=1000, epsilon=0.1, should_stop=None):
     """
     运行一次实验
 
@@ -75,6 +77,9 @@ def run_experiment(k=10, steps=1000, epsilon=0.1):
     best_action = np.argmax(bandit.q_true)
 
     for step in range(steps):
+        if should_stop and should_stop():
+            break
+
         # 1. 用ε-贪心策略选择动作
         action = epsilon_greedy(q_estimates, epsilon)
 
@@ -88,12 +93,20 @@ def run_experiment(k=10, steps=1000, epsilon=0.1):
 
         # 记录
         rewards[step] = reward
-        optimal_actions[step] = (action == best_action)
+        optimal_actions[step] = action == best_action
 
     return rewards, optimal_actions
 
 
-def run_comparison(epsilons, k=10, steps=1000, n_runs=200):
+def run_comparison(
+    epsilons,
+    k=10,
+    steps=1000,
+    n_runs=200,
+    seed=None,
+    should_stop=None,
+    on_episode_end=None,
+):
     """
     对比多种 ε 值的实验结果，返回 JSON 可序列化的 dict
 
@@ -111,6 +124,7 @@ def run_comparison(epsilons, k=10, steps=1000, n_runs=200):
             "summary": [{eps, avg_reward, optimal_pct}, ...]
         }
     """
+    set_global_seed(seed)
     all_rewards = {}
     all_optimal = {}
 
@@ -118,10 +132,20 @@ def run_comparison(epsilons, k=10, steps=1000, n_runs=200):
         rewards_sum = np.zeros(steps)
         optimal_sum = np.zeros(steps)
 
-        for _ in range(n_runs):
-            rewards, optimal = run_experiment(k, steps, eps)
-            rewards_sum += rewards
-            optimal_sum += optimal
+        for run_idx in range(n_runs):
+            if should_stop and should_stop():
+                break
+            rewards, optimal = run_experiment(k, steps, eps, should_stop=should_stop)
+            rewards_sum[: len(rewards)] += rewards
+            optimal_sum[: len(optimal)] += optimal
+            if on_episode_end:
+                on_episode_end(
+                    run_idx,
+                    min(len(rewards), steps) - 1,
+                    float(np.mean(rewards[-10:])),
+                    len(rewards),
+                    eps,
+                )
 
         all_rewards[eps] = rewards_sum / n_runs
         all_optimal[eps] = (optimal_sum / n_runs) * 100  # 转为百分比
@@ -130,11 +154,13 @@ def run_comparison(epsilons, k=10, steps=1000, n_runs=200):
     summary = []
     for eps in epsilons:
         tail = min(100, steps)
-        summary.append({
-            "epsilon": eps,
-            "avg_reward": round(float(np.mean(all_rewards[eps][-tail:])), 3),
-            "optimal_pct": round(float(np.mean(all_optimal[eps][-tail:])), 1),
-        })
+        summary.append(
+            {
+                "epsilon": eps,
+                "avg_reward": round(float(np.mean(all_rewards[eps][-tail:])), 3),
+                "optimal_pct": round(float(np.mean(all_optimal[eps][-tail:])), 1),
+            }
+        )
 
     # 转为 JSON 可序列化的格式（numpy → list）
     # 用 _eps_key 确保 0.0 → "0"、0.10 → "0.1" 等，与前端 String(eps) 对齐
@@ -149,4 +175,6 @@ def run_comparison(epsilons, k=10, steps=1000, n_runs=200):
         "rewards": rewards_dict,
         "optimal_pct": optimal_dict,
         "summary": summary,
+        "seed": seed,
+        "params": {"k": k, "steps": steps, "n_runs": n_runs, "epsilons": epsilons},
     }

@@ -20,6 +20,8 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
+from core.random_utils import seed_env, set_global_seed
+
 
 class QNetwork(nn.Module):
     """
@@ -92,11 +94,20 @@ class DQNAgent:
     目标网络就是一个"固定的评分标准"，让训练更稳定。
     """
 
-    def __init__(self, state_dim, action_dim, hidden_dim=128,
-                 lr=1e-3, gamma=0.99, epsilon=1.0,
-                 epsilon_decay=0.995, epsilon_min=0.01,
-                 buffer_capacity=10000, batch_size=64,
-                 target_update_freq=10):
+    def __init__(
+        self,
+        state_dim,
+        action_dim,
+        hidden_dim=128,
+        lr=1e-3,
+        gamma=0.99,
+        epsilon=1.0,
+        epsilon_decay=0.995,
+        epsilon_min=0.01,
+        buffer_capacity=10000,
+        batch_size=64,
+        target_update_freq=10,
+    ):
         self.state_dim = state_dim
         self.action_dim = action_dim
         self.gamma = gamma
@@ -166,7 +177,9 @@ class DQNAgent:
 
         # 当前 Q 值：Q_policy(s, a)
         # gather 的作用：从所有动作的 Q 值中，挑出实际执行的那个动作的 Q 值
-        current_q = self.policy_net(states_t).gather(1, actions_t.unsqueeze(1)).squeeze(1)
+        current_q = (
+            self.policy_net(states_t).gather(1, actions_t.unsqueeze(1)).squeeze(1)
+        )
 
         # 目标 Q 值：r + γ * max Q_target(s', a')
         with torch.no_grad():
@@ -193,8 +206,9 @@ class DQNAgent:
         self.episodes_done += 1
 
 
-def train_dqn(env, agent, episodes=300, max_steps=500,
-              on_episode_end=None):
+def train_dqn(
+    env, agent, episodes=300, max_steps=500, on_episode_end=None, should_stop=None
+):
     """
     训练 DQN 智能体
 
@@ -215,6 +229,8 @@ def train_dqn(env, agent, episodes=300, max_steps=500,
     losses = []
 
     for ep in range(episodes):
+        if should_stop and should_stop():
+            break
         state, _ = env.reset()
         total_reward = 0.0
         ep_losses = []
@@ -257,11 +273,23 @@ def train_dqn(env, agent, episodes=300, max_steps=500,
     return episode_rewards, episode_steps, losses
 
 
-def run_cartpole_experiment(episodes=300, hidden_dim=128, lr=1e-3,
-                            gamma=0.99, epsilon=1.0, epsilon_decay=0.995,
-                            epsilon_min=0.01, buffer_capacity=10000,
-                            batch_size=64, target_update_freq=10,
-                            max_steps=500, n_runs=1):
+def run_cartpole_experiment(
+    episodes=300,
+    hidden_dim=128,
+    lr=1e-3,
+    gamma=0.99,
+    epsilon=1.0,
+    epsilon_decay=0.995,
+    epsilon_min=0.01,
+    buffer_capacity=10000,
+    batch_size=64,
+    target_update_freq=10,
+    max_steps=500,
+    n_runs=1,
+    seed=None,
+    on_episode_end=None,
+    should_stop=None,
+):
     """
     运行 CartPole DQN 实验，返回 JSON 可序列化的 dict
 
@@ -269,19 +297,25 @@ def run_cartpole_experiment(episodes=300, hidden_dim=128, lr=1e-3,
     """
     import gymnasium as gym
 
+    set_global_seed(seed)
     all_rewards = np.zeros(episodes)
     all_steps = np.zeros(episodes)
     all_losses = np.zeros(episodes)
 
-    for _ in range(n_runs):
+    for run_idx in range(n_runs):
+        if should_stop and should_stop():
+            break
         env = gym.make("CartPole-v1")
+        seed_env(env, None if seed is None else seed + run_idx)
 
         agent = DQNAgent(
             state_dim=env.observation_space.shape[0],
             action_dim=env.action_space.n,
             hidden_dim=hidden_dim,
-            lr=lr, gamma=gamma,
-            epsilon=epsilon, epsilon_decay=epsilon_decay,
+            lr=lr,
+            gamma=gamma,
+            epsilon=epsilon,
+            epsilon_decay=epsilon_decay,
             epsilon_min=epsilon_min,
             buffer_capacity=buffer_capacity,
             batch_size=batch_size,
@@ -289,12 +323,23 @@ def run_cartpole_experiment(episodes=300, hidden_dim=128, lr=1e-3,
         )
 
         ep_rewards, ep_steps, ep_losses = train_dqn(
-            env, agent, episodes=episodes, max_steps=max_steps,
+            env,
+            agent,
+            episodes=episodes,
+            max_steps=max_steps,
+            should_stop=should_stop,
+            on_episode_end=(
+                lambda ep, reward, steps, eps: on_episode_end(
+                    run_idx, ep, reward, steps, eps
+                )
+            )
+            if on_episode_end
+            else None,
         )
 
-        all_rewards += np.array(ep_rewards)
-        all_steps += np.array(ep_steps)
-        all_losses += np.array(ep_losses)
+        all_rewards[: len(ep_rewards)] += np.array(ep_rewards)
+        all_steps[: len(ep_steps)] += np.array(ep_steps)
+        all_losses[: len(ep_losses)] += np.array(ep_losses)
 
         env.close()
 
@@ -306,7 +351,7 @@ def run_cartpole_experiment(episodes=300, hidden_dim=128, lr=1e-3,
     solved_episode = None
     if len(avg_rewards) >= 100:
         for i in range(99, len(avg_rewards)):
-            window_avg = np.mean(avg_rewards[max(0, i - 99):i + 1])
+            window_avg = np.mean(avg_rewards[max(0, i - 99) : i + 1])
             if window_avg >= 475:
                 solved_episode = i - 99
                 break
@@ -321,5 +366,19 @@ def run_cartpole_experiment(episodes=300, hidden_dim=128, lr=1e-3,
             "final_avg_steps": round(float(np.mean(avg_steps[-50:])), 1),
             "max_reward": round(float(np.max(avg_rewards)), 1),
             "solved_episode": solved_episode,
+        },
+        "seed": seed,
+        "params": {
+            "episodes": episodes,
+            "hidden_dim": hidden_dim,
+            "lr": lr,
+            "gamma": gamma,
+            "epsilon": epsilon,
+            "epsilon_decay": epsilon_decay,
+            "epsilon_min": epsilon_min,
+            "buffer_capacity": buffer_capacity,
+            "batch_size": batch_size,
+            "target_update_freq": target_update_freq,
+            "n_runs": n_runs,
         },
     }

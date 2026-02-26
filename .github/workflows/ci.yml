@@ -1,0 +1,26 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  quick-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+      - name: Install deps
+        run: uv sync --frozen --group dev
+      - name: Format/Lint
+        run: |
+          uv run ruff format --check main.py core web tests
+          uv run ruff check main.py core web tests
+      - name: Fast tests
+        run: uv run pytest -m "not slow"
+      - name: Build sanity
+        run: uv run python -m compileall -q .

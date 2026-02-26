@@ -7,6 +7,8 @@ CLI 脚本和 Web API 共用此模块。
 
 import numpy as np
 
+from core.random_utils import set_global_seed
+
 # 动作定义：上、下、左、右
 ACTIONS = {0: (-1, 0), 1: (1, 0), 2: (0, -1), 3: (0, 1)}
 ACTION_NAMES = {0: "↑", 1: "↓", 2: "←", 3: "→"}
@@ -26,8 +28,7 @@ class GridWorld:
     - 奖励 (Reward): 到达终点 +10，掉进陷阱 -10，每走一步 -0.1
     """
 
-    def __init__(self, rows=5, cols=5, start=None, goal=None,
-                 traps=None, walls=None):
+    def __init__(self, rows=5, cols=5, start=None, goal=None, traps=None, walls=None):
         """
         初始化网格世界
 
@@ -69,9 +70,13 @@ class GridWorld:
         new_col = self.state[1] + dc
 
         # 撞墙检测：出界或碰到墙壁 → 原地不动
-        if (new_row < 0 or new_row >= self.rows or
-                new_col < 0 or new_col >= self.cols or
-                (new_row, new_col) in self.walls):
+        if (
+            new_row < 0
+            or new_row >= self.rows
+            or new_col < 0
+            or new_col >= self.cols
+            or (new_row, new_col) in self.walls
+        ):
             new_row, new_col = self.state
 
         self.state = (new_row, new_col)
@@ -99,8 +104,18 @@ class GridWorld:
         return 4
 
 
-def q_learning(env, episodes=500, alpha=0.1, gamma=0.99, epsilon=0.1,
-               epsilon_decay=0.995, epsilon_min=0.01, max_steps=100):
+def q_learning(
+    env,
+    episodes=500,
+    alpha=0.1,
+    gamma=0.99,
+    epsilon=0.1,
+    epsilon_decay=0.995,
+    epsilon_min=0.01,
+    max_steps=100,
+    on_episode_end=None,
+    should_stop=None,
+):
     """
     Q-Learning 算法
 
@@ -138,6 +153,9 @@ def q_learning(env, episodes=500, alpha=0.1, gamma=0.99, epsilon=0.1,
     current_epsilon = epsilon
 
     for ep in range(episodes):
+        if should_stop and should_stop():
+            break
+
         state = env.reset()
         total_reward = 0.0
 
@@ -170,6 +188,9 @@ def q_learning(env, episodes=500, alpha=0.1, gamma=0.99, epsilon=0.1,
 
         # 衰减 ε：随着训练进行，逐渐减少探索
         current_epsilon = max(epsilon_min, current_epsilon * epsilon_decay)
+
+        if on_episode_end:
+            on_episode_end(ep, total_reward, step + 1, current_epsilon)
 
     return q_table, episode_rewards, episode_steps
 
@@ -206,10 +227,23 @@ def extract_policy(q_table, env):
     return policy, policy_arrows
 
 
-def run_gridworld_experiment(rows=5, cols=5, traps=None, walls=None,
-                             episodes=500, alpha=0.1, gamma=0.99,
-                             epsilon=0.1, epsilon_decay=0.995,
-                             epsilon_min=0.01, max_steps=100, n_runs=1):
+def run_gridworld_experiment(
+    rows=5,
+    cols=5,
+    traps=None,
+    walls=None,
+    episodes=500,
+    alpha=0.1,
+    gamma=0.99,
+    epsilon=0.1,
+    epsilon_decay=0.995,
+    epsilon_min=0.01,
+    max_steps=100,
+    n_runs=1,
+    seed=None,
+    on_episode_end=None,
+    should_stop=None,
+):
     """
     运行 GridWorld Q-Learning 实验，返回 JSON 可序列化的 dict
 
@@ -234,21 +268,38 @@ def run_gridworld_experiment(rows=5, cols=5, traps=None, walls=None,
     if walls is None:
         walls = [(1, 1), (2, 3)]
 
+    set_global_seed(seed)
+
     # 多次运行取平均
     all_rewards = np.zeros(episodes)
     all_steps = np.zeros(episodes)
     best_q_table = None
     best_final_reward = -float("inf")
 
-    for _ in range(n_runs):
+    for run_idx in range(n_runs):
+        if should_stop and should_stop():
+            break
         env = GridWorld(rows, cols, traps=traps, walls=walls)
         q_table, ep_rewards, ep_steps = q_learning(
-            env, episodes=episodes, alpha=alpha, gamma=gamma,
-            epsilon=epsilon, epsilon_decay=epsilon_decay,
-            epsilon_min=epsilon_min, max_steps=max_steps,
+            env,
+            episodes=episodes,
+            alpha=alpha,
+            gamma=gamma,
+            epsilon=epsilon,
+            epsilon_decay=epsilon_decay,
+            epsilon_min=epsilon_min,
+            max_steps=max_steps,
+            should_stop=should_stop,
+            on_episode_end=(
+                lambda ep, reward, steps, eps: on_episode_end(
+                    run_idx, ep, reward, steps, eps
+                )
+            )
+            if on_episode_end
+            else None,
         )
-        all_rewards += np.array(ep_rewards)
-        all_steps += np.array(ep_steps)
+        all_rewards[: len(ep_rewards)] += np.array(ep_rewards)
+        all_steps[: len(ep_steps)] += np.array(ep_steps)
 
         final_avg = np.mean(ep_rewards[-50:])
         if final_avg > best_final_reward:
@@ -278,12 +329,14 @@ def run_gridworld_experiment(rows=5, cols=5, traps=None, walls=None,
                 cell_type = "wall"
             else:
                 cell_type = "empty"
-            row_data.append({
-                "type": cell_type,
-                "action": int(policy[r, c]),
-                "arrow": str(policy_arrows[r, c]),
-                "q_values": best_q_table[r * cols + c].tolist(),
-            })
+            row_data.append(
+                {
+                    "type": cell_type,
+                    "action": int(policy[r, c]),
+                    "arrow": str(policy_arrows[r, c]),
+                    "q_values": best_q_table[r * cols + c].tolist(),
+                }
+            )
         grid_info.append(row_data)
 
     return {
@@ -298,6 +351,18 @@ def run_gridworld_experiment(rows=5, cols=5, traps=None, walls=None,
             "final_avg_steps": round(float(np.mean(avg_steps[-50:])), 1),
             "converged_episode": _find_convergence(avg_rewards),
         },
+        "seed": seed,
+        "params": {
+            "rows": rows,
+            "cols": cols,
+            "episodes": episodes,
+            "alpha": alpha,
+            "gamma": gamma,
+            "epsilon": epsilon,
+            "epsilon_decay": epsilon_decay,
+            "epsilon_min": epsilon_min,
+            "n_runs": n_runs,
+        },
     }
 
 
@@ -306,7 +371,7 @@ def _find_convergence(rewards, window=20, threshold=0.5):
     if len(rewards) < window * 2:
         return len(rewards)
     for i in range(window, len(rewards) - window):
-        recent = np.mean(rewards[i:i + window])
+        recent = np.mean(rewards[i : i + window])
         if recent > 0:
             return i
     return len(rewards)

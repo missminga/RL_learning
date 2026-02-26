@@ -67,8 +67,11 @@ class TestREINFORCEAgent:
     @pytest.fixture
     def agent(self):
         return REINFORCEAgent(
-            state_dim=4, action_dim=2, hidden_dim=32,
-            lr=1e-3, gamma=0.99,
+            state_dim=4,
+            action_dim=2,
+            hidden_dim=32,
+            lr=1e-3,
+            gamma=0.99,
         )
 
     def test_select_action_range(self, agent):
@@ -146,18 +149,25 @@ class TestREINFORCEAgent:
 # ===== 训练集成测试 =====
 
 
+@pytest.mark.slow
 class TestTraining:
-    """训练流程集成测试"""
+    """训练流程集成测试（慢速）"""
 
     def test_train_reinforce_runs(self):
         """train_reinforce 应能正常运行并返回正确长度的结果"""
         env = gym.make("CartPole-v1")
         agent = REINFORCEAgent(
-            state_dim=4, action_dim=2, hidden_dim=16,
-            lr=1e-3, gamma=0.99,
+            state_dim=4,
+            action_dim=2,
+            hidden_dim=16,
+            lr=1e-3,
+            gamma=0.99,
         )
         rewards, steps, losses = train_reinforce(
-            env, agent, episodes=5, max_steps=50,
+            env,
+            agent,
+            episodes=5,
+            max_steps=50,
         )
         env.close()
 
@@ -170,7 +180,9 @@ class TestTraining:
     def test_run_reinforce_experiment(self):
         """run_reinforce_experiment 应返回正确结构的 dict"""
         result = run_reinforce_experiment(
-            episodes=5, hidden_dim=16, max_steps=50,
+            episodes=5,
+            hidden_dim=16,
+            max_steps=50,
         )
 
         assert "episodes" in result
@@ -187,15 +199,16 @@ class TestTraining:
         """on_episode_end 回调应被正确调用"""
         env = gym.make("CartPole-v1")
         agent = REINFORCEAgent(
-            state_dim=4, action_dim=2, hidden_dim=16,
+            state_dim=4,
+            action_dim=2,
+            hidden_dim=16,
         )
         call_count = [0]
 
         def callback(ep, reward, steps, loss):
             call_count[0] += 1
 
-        train_reinforce(env, agent, episodes=3, max_steps=20,
-                        on_episode_end=callback)
+        train_reinforce(env, agent, episodes=3, max_steps=20, on_episode_end=callback)
         env.close()
 
         assert call_count[0] == 3

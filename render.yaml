@@ -7,3 +7,7 @@ services:
     envVars:
       - key: PORT
         value: "8000"
+      - key: HOST
+        value: "0.0.0.0"
+      - key: RL_MAX_CONCURRENT_TASKS
+        value: "2"

@@ -1,10 +1,7 @@
 """Q-Learning + GridWorld 核心模块测试"""
 
 import numpy as np
-import pytest
-
 from core.q_learning import (
-    ACTIONS,
     ACTION_NAMES,
     GridWorld,
     q_learning,
@@ -120,8 +117,13 @@ class TestQLearning:
         """训练后期的表现应该比初期好"""
         env = GridWorld(rows=4, cols=4, traps=[(1, 3)], walls=[(1, 1)])
         _, rewards, _ = q_learning(
-            env, episodes=300, alpha=0.1, gamma=0.99,
-            epsilon=1.0, epsilon_decay=0.99, epsilon_min=0.01,
+            env,
+            episodes=300,
+            alpha=0.1,
+            gamma=0.99,
+            epsilon=1.0,
+            epsilon_decay=0.99,
+            epsilon_min=0.01,
         )
         # 前 30 回合 vs 后 30 回合，后期应该更好
         early = np.mean(rewards[:30])
@@ -132,8 +134,13 @@ class TestQLearning:
         """2x2 网格，无障碍，应该能学会到达终点"""
         env = GridWorld(rows=2, cols=2)
         q_table, rewards, _ = q_learning(
-            env, episodes=200, alpha=0.2, gamma=0.99,
-            epsilon=1.0, epsilon_decay=0.98, epsilon_min=0.01,
+            env,
+            episodes=200,
+            alpha=0.2,
+            gamma=0.99,
+            epsilon=1.0,
+            epsilon_decay=0.98,
+            epsilon_min=0.01,
         )
         # 最后几回合的奖励应该是正的（到达终点得 +10）
         assert np.mean(rewards[-20:]) > 0
@@ -155,9 +162,9 @@ class TestExtractPolicy:
         env = GridWorld(rows=3, cols=3, traps=[(0, 1)], walls=[(1, 0)])
         q_table = np.zeros((9, 4))
         _, arrows = extract_policy(q_table, env)
-        assert arrows[2, 2] == "★"   # 终点
-        assert arrows[0, 1] == "✕"   # 陷阱
-        assert arrows[1, 0] == "▓"   # 墙壁
+        assert arrows[2, 2] == "★"  # 终点
+        assert arrows[0, 1] == "✕"  # 陷阱
+        assert arrows[1, 0] == "▓"  # 墙壁
 
     def test_arrow_values(self):
         """普通格子应该显示箭头"""
@@ -174,8 +181,12 @@ class TestRunExperiment:
     def test_returns_correct_structure(self):
         """返回的字典应包含所有必要的键"""
         result = run_gridworld_experiment(
-            rows=3, cols=3, traps=[], walls=[],
-            episodes=20, n_runs=1,
+            rows=3,
+            cols=3,
+            traps=[],
+            walls=[],
+            episodes=20,
+            n_runs=1,
         )
         assert "rows" in result
         assert "cols" in result
@@ -188,8 +199,12 @@ class TestRunExperiment:
     def test_grid_dimensions(self):
         """grid 的维度应该匹配 rows × cols"""
         result = run_gridworld_experiment(
-            rows=4, cols=3, traps=[], walls=[],
-            episodes=10, n_runs=1,
+            rows=4,
+            cols=3,
+            traps=[],
+            walls=[],
+            episodes=10,
+            n_runs=1,
         )
         assert len(result["grid"]) == 4
         assert len(result["grid"][0]) == 3
@@ -197,8 +212,12 @@ class TestRunExperiment:
     def test_multiple_runs(self):
         """多次运行应该返回平均结果"""
         result = run_gridworld_experiment(
-            rows=3, cols=3, traps=[], walls=[],
-            episodes=20, n_runs=3,
+            rows=3,
+            cols=3,
+            traps=[],
+            walls=[],
+            episodes=20,
+            n_runs=3,
         )
         assert len(result["avg_rewards"]) == 20
         assert len(result["avg_steps"]) == 20

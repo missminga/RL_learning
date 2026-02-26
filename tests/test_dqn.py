@@ -97,10 +97,16 @@ class TestDQNAgent:
     @pytest.fixture
     def agent(self):
         return DQNAgent(
-            state_dim=4, action_dim=2, hidden_dim=32,
-            lr=1e-3, gamma=0.99, epsilon=1.0,
-            epsilon_decay=0.99, epsilon_min=0.01,
-            buffer_capacity=100, batch_size=8,
+            state_dim=4,
+            action_dim=2,
+            hidden_dim=32,
+            lr=1e-3,
+            gamma=0.99,
+            epsilon=1.0,
+            epsilon_decay=0.99,
+            epsilon_min=0.01,
+            buffer_capacity=100,
+            batch_size=8,
             target_update_freq=5,
         )
 
@@ -142,8 +148,11 @@ class TestDQNAgent:
         """缓冲区够了之后 train_step 应返回损失值"""
         for i in range(20):
             agent.store_transition(
-                np.random.randn(4).astype(np.float32), i % 2,
-                1.0, np.random.randn(4).astype(np.float32), False,
+                np.random.randn(4).astype(np.float32),
+                i % 2,
+                1.0,
+                np.random.randn(4).astype(np.float32),
+                False,
             )
         loss = agent.train_step()
         assert loss is not None
@@ -155,34 +164,43 @@ class TestDQNAgent:
         # 先训练几步让 policy_net 参数变化
         for i in range(20):
             agent.store_transition(
-                np.random.randn(4).astype(np.float32), i % 2,
-                1.0, np.random.randn(4).astype(np.float32), False,
+                np.random.randn(4).astype(np.float32),
+                i % 2,
+                1.0,
+                np.random.randn(4).astype(np.float32),
+                False,
             )
         agent.train_step()
 
         agent.update_target_network()
 
-        for p, t in zip(agent.policy_net.parameters(),
-                        agent.target_net.parameters()):
+        for p, t in zip(agent.policy_net.parameters(), agent.target_net.parameters()):
             assert torch.allclose(p, t)
 
 
 # ===== 训练集成测试 =====
 
 
+@pytest.mark.slow
 class TestTraining:
-    """训练流程集成测试"""
+    """训练流程集成测试（慢速）"""
 
     def test_train_dqn_runs(self):
         """train_dqn 应能正常运行并返回正确长度的结果"""
         env = gym.make("CartPole-v1")
         agent = DQNAgent(
-            state_dim=4, action_dim=2, hidden_dim=16,
-            buffer_capacity=200, batch_size=16,
+            state_dim=4,
+            action_dim=2,
+            hidden_dim=16,
+            buffer_capacity=200,
+            batch_size=16,
             target_update_freq=3,
         )
         rewards, steps, losses = train_dqn(
-            env, agent, episodes=5, max_steps=50,
+            env,
+            agent,
+            episodes=5,
+            max_steps=50,
         )
         env.close()
 
@@ -195,8 +213,12 @@ class TestTraining:
     def test_run_cartpole_experiment(self):
         """run_cartpole_experiment 应返回正确结构的 dict"""
         result = run_cartpole_experiment(
-            episodes=5, hidden_dim=16, buffer_capacity=200,
-            batch_size=16, target_update_freq=2, max_steps=50,
+            episodes=5,
+            hidden_dim=16,
+            buffer_capacity=200,
+            batch_size=16,
+            target_update_freq=2,
+            max_steps=50,
         )
 
         assert "episodes" in result
@@ -212,16 +234,18 @@ class TestTraining:
         """on_episode_end 回调应被正确调用"""
         env = gym.make("CartPole-v1")
         agent = DQNAgent(
-            state_dim=4, action_dim=2, hidden_dim=16,
-            buffer_capacity=200, batch_size=16,
+            state_dim=4,
+            action_dim=2,
+            hidden_dim=16,
+            buffer_capacity=200,
+            batch_size=16,
         )
         call_count = [0]
 
         def callback(ep, reward, steps, eps):
             call_count[0] += 1
 
-        train_dqn(env, agent, episodes=3, max_steps=20,
-                   on_episode_end=callback)
+        train_dqn(env, agent, episodes=3, max_steps=20, on_episode_end=callback)
         env.close()
 
         assert call_count[0] == 3
