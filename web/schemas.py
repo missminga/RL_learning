@@ -131,6 +131,35 @@ class ReinforceRunResponse(BaseModel):
     params: dict[str, Any] = Field(default_factory=dict)
 
 
+class A2CRunRequest(AsyncControl):
+    episodes: int = Field(default=500, ge=10, le=2000)
+    hidden_dim: int = Field(default=128, ge=16, le=512)
+    lr: float = Field(default=1e-3, gt=0, le=0.1)
+    gamma: float = Field(default=0.99, ge=0, le=1)
+    value_coef: float = Field(default=0.5, ge=0, le=10)
+    entropy_coef: float = Field(default=0.01, ge=0, le=1)
+    n_runs: int = Field(default=1, ge=1, le=5)
+
+
+class A2CSummary(BaseModel):
+    final_avg_reward: float
+    final_avg_steps: float
+    max_reward: float
+    solved_episode: int | None
+
+
+class A2CRunResponse(BaseModel):
+    episodes: int
+    avg_rewards: list[float]
+    avg_steps: list[float]
+    avg_losses: list[float]
+    avg_actor_losses: list[float]
+    avg_critic_losses: list[float]
+    summary: A2CSummary
+    seed: int | None = None
+    params: dict[str, Any] = Field(default_factory=dict)
+
+
 class TaskSubmitResponse(BaseModel):
     task_id: str
     status: str

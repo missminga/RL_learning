@@ -9,7 +9,14 @@ from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from web.routers import bandit, cartpole, gridworld, policy_gradient, tasks
+from web.routers import (
+    actor_critic,
+    bandit,
+    cartpole,
+    gridworld,
+    policy_gradient,
+    tasks,
+)
 
 app = FastAPI(title="RL 学习平台")
 logger = logging.getLogger("rl_learning")
@@ -39,6 +46,7 @@ app.include_router(bandit.router)
 app.include_router(gridworld.router)
 app.include_router(cartpole.router)
 app.include_router(policy_gradient.router)
+app.include_router(actor_critic.router)
 app.include_router(tasks.router)
 
 static_dir = Path(__file__).parent / "static"
@@ -68,3 +76,8 @@ async def cartpole_page():
 @app.get("/policy-gradient")
 async def policy_gradient_page():
     return FileResponse(str(static_dir / "policy_gradient.html"))
+
+
+@app.get("/actor-critic")
+async def actor_critic_page():
+    return FileResponse(str(static_dir / "actor_critic.html"))
