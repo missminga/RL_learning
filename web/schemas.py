@@ -134,7 +134,7 @@ class ReinforceRunResponse(BaseModel):
 class A2CRunRequest(AsyncControl):
     episodes: int = Field(default=500, ge=10, le=2000)
     hidden_dim: int = Field(default=128, ge=16, le=512)
-    lr: float = Field(default=1e-3, gt=0, le=0.1)
+    lr: float = Field(default=3e-3, gt=0, le=0.1)
     gamma: float = Field(default=0.99, ge=0, le=1)
     value_coef: float = Field(default=0.5, ge=0, le=10)
     entropy_coef: float = Field(default=0.01, ge=0, le=1)
