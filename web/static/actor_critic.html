@@ -37,11 +37,11 @@
                         <option value="128" selected>128</option>
                         <option value="256">256</option>
                     </select>
-                    <span class="hint">Actor 与 Critic 共享躯干的宽度</span>
+                    <span class="hint">Actor / Critic 网络每层的宽度</span>
                 </div>
                 <div class="param-item">
                     <label for="ac-lr">学习率 (lr)</label>
-                    <input type="number" id="ac-lr" value="0.001" min="0.0001" max="0.1" step="0.0001">
+                    <input type="number" id="ac-lr" value="0.003" min="0.0001" max="0.1" step="0.0001">
                     <span class="hint">Adam 优化器学习率</span>
                 </div>
                 <div class="param-item">
@@ -94,7 +94,7 @@
                 <li><strong>优势 Advantage</strong>：A = G_t − V(s)，"这个动作比该状态平均水平好多少"</li>
                 <li><strong>降方差</strong>：减去 baseline V(s) 不改变梯度期望（无偏），却大幅降低方差</li>
                 <li><strong>两个损失</strong>：actor_loss（策略）+ critic_loss（回归）+ 熵奖励（探索）</li>
-                <li><strong>共享躯干</strong>：Actor 和 Critic 共用特征提取层，省参数、互相促进</li>
+                <li><strong>独立网络</strong>：Actor 和 Critic 各用一套网络，梯度互不干扰，训练更稳</li>
             </ul>
 
             <h2>DQN vs REINFORCE vs A2C 对比</h2>

@@ -59,7 +59,7 @@ A2C 一次更新同时优化两个网络：
 | 谁选动作   | argmax Q（评委）  | 策略采样（演员）   | 策略采样（演员）        |
 | 评估信号   | TD 目标           | 蒙特卡洛回报 G_t   | 优势 A = G_t - V(s)    |
 | 方差       | 低（但有偏）       | 高               | 中（兼顾偏差与方差）     |
-| 网络数量   | 2（策略+目标）     | 1（策略）         | 1 个网络两个头（演员+评委）|
+| 网络数量   | 2（策略+目标）     | 1（策略）         | 2（演员网络+评委网络）  |
 
 A2C 是现代算法（PPO、A3C、SAC 等）的基础，理解它就打通了
 "基于价值"和"基于策略"两条路线的结合点。
@@ -76,42 +76,50 @@ from core.random_utils import seed_env, set_global_seed
 
 class ActorCriticNetwork(nn.Module):
     """
-    Actor-Critic 网络：一个共享躯干 + 两个头
+    Actor-Critic 网络：两套**相互独立**的网络
 
-    设计上让 Actor 和 Critic **共享前面的特征提取层**，再各自分出一个头：
-    - 共享躯干 (shared trunk)：把原始状态压缩成有用的特征表示
-    - Actor 头：输出各动作的 logits（经 softmax 变概率）—— 决定怎么动
-    - Critic 头：输出一个标量 V(s) —— 评估这个状态值多少
+    - Actor（演员）网络：状态 → 各动作的 logits（经 softmax 变概率）—— 决定怎么动
+    - Critic（评委）网络：状态 → 一个标量 V(s) —— 评估这个状态值多少
 
-    为什么共享？因为"看懂当前局面"这件事 Actor 和 Critic 都需要，
-    共享能让两者互相促进、参数更省、训练更快。
+    为什么不共享网络？
+    A2C 一次更新里同时算 actor 和 critic 两种损失。如果两者共享底层网络，
+    Critic 的损失（回报的平方，量级可达上千）产生的梯度会顺着共享层
+    "压制"住 Actor 那份小得多的梯度，结果网络几乎只在拟合价值、策略学不动。
+    （这一点在 CartPole 上实测非常明显：共享网络基本学不起来。）
+    用两套独立网络，各自的梯度互不干扰，训练稳定可靠。
+
+    激活函数用 Tanh 而非 ReLU：策略梯度类方法对激活函数较敏感，
+    Tanh 输出有界、梯度更平滑，在 CartPole 这类任务上收敛更稳更快。
     """
 
     def __init__(self, state_dim, action_dim, hidden_dim=128):
         super().__init__()
-        # 共享躯干：负责把状态变成特征
-        self.shared = nn.Sequential(
+        # Actor 网络：状态 → 动作 logits
+        self.actor = nn.Sequential(
             nn.Linear(state_dim, hidden_dim),
-            nn.ReLU(),
+            nn.Tanh(),
             nn.Linear(hidden_dim, hidden_dim),
-            nn.ReLU(),
+            nn.Tanh(),
+            nn.Linear(hidden_dim, action_dim),
         )
-        # Actor 头：特征 → 各动作的 logits
-        self.actor_head = nn.Linear(hidden_dim, action_dim)
-        # Critic 头：特征 → 状态价值 V(s)（一个标量）
-        self.critic_head = nn.Linear(hidden_dim, 1)
+        # Critic 网络：状态 → 状态价值 V(s)（一个标量）
+        self.critic = nn.Sequential(
+            nn.Linear(state_dim, hidden_dim),
+            nn.Tanh(),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.Tanh(),
+            nn.Linear(hidden_dim, 1),
+        )
 
     def forward(self, x):
         """同时返回动作 logits 和 状态价值 V(s)"""
-        features = self.shared(x)
-        logits = self.actor_head(features)
-        value = self.critic_head(features)
+        logits = self.actor(x)
+        value = self.critic(x)
         return logits, value
 
     def get_action_probs(self, state):
         """只取动作概率分布（softmax 后）"""
-        logits, _ = self.forward(state)
-        return torch.softmax(logits, dim=-1)
+        return torch.softmax(self.actor(state), dim=-1)
 
 
 class A2CAgent:
@@ -119,7 +127,7 @@ class A2CAgent:
     A2C 智能体（Advantage Actor-Critic）
 
     和 REINFORCE 智能体对比：
-    - 多了一个 Critic（价值头），更新时会用 V(s) 作为 baseline
+    - 多了一个 Critic（价值网络），更新时会用 V(s) 作为 baseline
     - 多记录了每步的 value 和 entropy
     - 损失由 actor_loss + critic_loss(- entropy) 三部分组成
 
@@ -135,7 +143,7 @@ class A2CAgent:
         state_dim,
         action_dim,
         hidden_dim=128,
-        lr=1e-3,
+        lr=3e-3,
         gamma=0.99,
         value_coef=0.5,
         entropy_coef=0.01,
@@ -217,18 +225,20 @@ class A2CAgent:
         # ===== 第二步：计算优势 A_t = G_t - V(s_t) =====
         # 注意 .detach()：算 actor 损失时，优势只当"权重"，
         # 不能让梯度从这里回传到 Critic（Critic 由 critic_loss 单独训练）。
+        # 这里**不**再对优势做标准化：Critic 本身已经充当了 baseline，
+        # 若再按单个回合标准化优势，会把"这一整个回合是好是坏"的信息抹掉
+        # （短回合里只剩"步在回合中的先后"这种无用信号），反而学不动。
         advantages = returns - values.detach()
-        # 标准化优势，进一步稳定训练（可选的小技巧）
-        if len(advantages) > 1:
-            advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
 
         # ===== 第三步：三部分损失 =====
+        # 三个损失都用 mean（按步求平均）而非 sum，这样它们的量级互相可比、
+        # 训练更稳定（sum 会让长回合的损失数值忽大忽小）。
         # 1) Actor：让优势大的动作概率上升
-        actor_loss = -(log_probs * advantages).sum()
+        actor_loss = -(log_probs * advantages).mean()
         # 2) Critic：让 V(s) 回归到真实回报 G_t（回归问题）
-        critic_loss = nn.functional.mse_loss(values, returns, reduction="sum")
+        critic_loss = nn.functional.mse_loss(values, returns)
         # 3) 熵奖励：鼓励保持随机性（最大化熵 = 最小化 -熵）
-        entropy_loss = -entropies.sum()
+        entropy_loss = -entropies.mean()
 
         total_loss = (
             actor_loss
@@ -239,7 +249,7 @@ class A2CAgent:
         # ===== 第四步：反向传播，一次更新整个网络 =====
         self.optimizer.zero_grad()
         total_loss.backward()
-        nn.utils.clip_grad_norm_(self.net.parameters(), max_norm=1.0)
+        nn.utils.clip_grad_norm_(self.net.parameters(), max_norm=0.5)
         self.optimizer.step()
 
         a_loss = float(actor_loss.item())
@@ -314,7 +324,7 @@ def train_a2c(
 def run_a2c_experiment(
     episodes=500,
     hidden_dim=128,
-    lr=1e-3,
+    lr=3e-3,
     gamma=0.99,
     value_coef=0.5,
     entropy_coef=0.01,

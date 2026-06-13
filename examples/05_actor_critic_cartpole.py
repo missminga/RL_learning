@@ -146,14 +146,14 @@ def main():
     # ===== 训练参数 =====
     episodes = 500
     hidden_dim = 128
-    lr = 1e-3
+    lr = 3e-3
     gamma = 0.99
     value_coef = 0.5      # Critic 损失权重
     entropy_coef = 0.01   # 熵奖励权重
 
     print("\n训练参数：")
     print(f"  回合数: {episodes}")
-    print(f"  网络隐藏层: {hidden_dim} 个神经元（Actor 与 Critic 共享躯干）")
+    print(f"  网络隐藏层: {hidden_dim} 个神经元（Actor 与 Critic 各一套独立网络）")
     print(f"  学习率: {lr}")
     print(f"  折扣因子 γ: {gamma}")
     print(f"  Critic 损失权重: {value_coef}，熵奖励权重: {entropy_coef}")
@@ -238,7 +238,8 @@ def main():
 2. 优势函数 A = G_t - V(s): 用"相对回报"代替"绝对回报"，大幅降低方差
 3. baseline 免费午餐: 减去 V(s) 不改变梯度期望(无偏)，只降方差
 4. 两个损失: actor_loss(策略) + critic_loss(回归) + 熵奖励(探索)
-5. 共享躯干: Actor 和 Critic 共用特征提取层，省参数、互相促进
+5. 独立网络: Actor 和 Critic 各用一套网络，梯度互不干扰（共享网络会让
+   Critic 的大梯度压制 Actor，导致策略学不动——这点在 CartPole 上很明显）
 
 对比 REINFORCE vs A2C：
   REINFORCE: 用整条轨迹的回报 G_t 加权 → 方差大、抖动剧烈
