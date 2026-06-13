@@ -5,6 +5,7 @@
 - **GridWorld + Q-Learning**
 - **CartPole + DQN**
 - **CartPole + REINFORCE**
+- **CartPole + A2C（Actor-Critic）**
 
 提供 FastAPI + 前端页面 + 异步训练任务接口。
 
@@ -63,6 +64,7 @@ uv run uvicorn web.app:app --host 0.0.0.0 --port 8000
 - `http://127.0.0.1:8000/gridworld`
 - `http://127.0.0.1:8000/cartpole`
 - `http://127.0.0.1:8000/policy-gradient`
+- `http://127.0.0.1:8000/actor-critic`
 - `http://127.0.0.1:8000/docs`（OpenAPI）
 
 ---
@@ -90,6 +92,10 @@ uv run uvicorn web.app:app --host 0.0.0.0 --port 8000
 - `POST /api/policy-gradient/run`
 - `POST /api/policy-gradient/run-sync`
 
+### A2C（Actor-Critic）
+- `POST /api/actor-critic/run`
+- `POST /api/actor-critic/run-sync`
+
 > 所有训练请求均支持 `seed`（统一随机种子）与 `timeout_seconds`（任务超时保护）。
 
 ---
@@ -100,6 +106,7 @@ uv run uvicorn web.app:app --host 0.0.0.0 --port 8000
 - `/gridworld`：GridWorld Q-Learning 训练与策略可视化
 - `/cartpole`：DQN CartPole 训练曲线
 - `/policy-gradient`：REINFORCE 训练曲线
+- `/actor-critic`：A2C（Actor-Critic）训练曲线（含 Actor / Critic 双损失）
 
 ---
 

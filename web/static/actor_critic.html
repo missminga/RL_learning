@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Actor-Critic (A2C) - RL 学习平台</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- 导航栏 -->
+        <nav class="nav-bar">
+            <a href="/" class="nav-link">01 多臂老虎机</a>
+            <a href="/gridworld" class="nav-link">02 Q-Learning GridWorld</a>
+            <a href="/cartpole" class="nav-link">03 DQN CartPole</a>
+            <a href="/policy-gradient" class="nav-link">04 REINFORCE</a>
+            <a href="/actor-critic" class="nav-link active">05 A2C</a>
+        </nav>
+
+        <h1>Actor-Critic (A2C) 实验</h1>
+        <p class="subtitle">演员 + 评委协作——用"优势"代替"回报"，比 REINFORCE 方差更小、更稳定</p>
+
+        <!-- 参数区 -->
+        <div class="params-panel">
+            <h2>实验参数</h2>
+            <div class="params-grid">
+                <div class="param-item">
+                    <label for="ac-episodes">训练回合 (episodes)</label>
+                    <input type="number" id="ac-episodes" value="500" min="10" max="2000">
+                    <span class="hint">10 ~ 2000</span>
+                </div>
+                <div class="param-item">
+                    <label for="ac-hidden">隐藏层神经元数</label>
+                    <select id="ac-hidden">
+                        <option value="64">64</option>
+                        <option value="128" selected>128</option>
+                        <option value="256">256</option>
+                    </select>
+                    <span class="hint">Actor 与 Critic 共享躯干的宽度</span>
+                </div>
+                <div class="param-item">
+                    <label for="ac-lr">学习率 (lr)</label>
+                    <input type="number" id="ac-lr" value="0.001" min="0.0001" max="0.1" step="0.0001">
+                    <span class="hint">Adam 优化器学习率</span>
+                </div>
+                <div class="param-item">
+                    <label for="ac-gamma">折扣因子 γ</label>
+                    <input type="number" id="ac-gamma" value="0.99" min="0" max="1" step="0.01">
+                    <span class="hint">未来奖励的折扣</span>
+                </div>
+                <div class="param-item">
+                    <label for="ac-value-coef">Critic 损失权重</label>
+                    <input type="number" id="ac-value-coef" value="0.5" min="0" max="10" step="0.1">
+                    <span class="hint">评委损失在总损失里的比重</span>
+                </div>
+                <div class="param-item">
+                    <label for="ac-entropy-coef">熵奖励权重</label>
+                    <input type="number" id="ac-entropy-coef" value="0.01" min="0" max="1" step="0.01">
+                    <span class="hint">鼓励探索，防止过早收敛</span>
+                </div>
+                <div class="param-item">
+                    <label for="ac-nruns">重复训练次数</label>
+                    <input type="number" id="ac-nruns" value="1" min="1" max="5">
+                    <span class="hint">多次取平均，更稳定</span>
+                </div>
+            </div>
+            <button id="ac-run-btn" onclick="runActorCritic()">▶ 开始训练</button>
+            <span id="ac-status-text"></span>
+        </div>
+
+        <!-- 图表区 -->
+        <div class="charts-panel" id="ac-charts-panel" style="display:none;">
+            <div class="chart-box">
+                <div id="ac-reward-chart" style="width:100%;height:350px;"></div>
+            </div>
+            <div class="chart-box">
+                <div id="ac-loss-chart" style="width:100%;height:350px;"></div>
+            </div>
+        </div>
+
+        <!-- 摘要 -->
+        <div class="summary-panel" id="ac-summary-panel" style="display:none;">
+            <h2>训练结果</h2>
+            <div id="ac-summary-content"></div>
+        </div>
+
+        <!-- 概念说明 -->
+        <div class="info-panel">
+            <h2>核心概念</h2>
+            <ul>
+                <li><strong>Actor（演员）</strong>：策略网络 π(a|s)，决定选哪个动作（和 REINFORCE 一样）</li>
+                <li><strong>Critic（评委）</strong>：价值网络 V(s)，估计"这个状态大概值多少分"</li>
+                <li><strong>优势 Advantage</strong>：A = G_t − V(s)，"这个动作比该状态平均水平好多少"</li>
+                <li><strong>降方差</strong>：减去 baseline V(s) 不改变梯度期望（无偏），却大幅降低方差</li>
+                <li><strong>两个损失</strong>：actor_loss（策略）+ critic_loss（回归）+ 熵奖励（探索）</li>
+                <li><strong>共享躯干</strong>：Actor 和 Critic 共用特征提取层，省参数、互相促进</li>
+            </ul>
+
+            <h2>DQN vs REINFORCE vs A2C 对比</h2>
+            <table>
+                <thead>
+                    <tr><th>特性</th><th>DQN</th><th>REINFORCE</th><th>A2C</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>学什么</td><td>Q 值</td><td>策略</td><td>策略 + 价值</td></tr>
+                    <tr><td>评估信号</td><td>TD 目标</td><td>回报 G_t</td><td>优势 G_t − V(s)</td></tr>
+                    <tr><td>方差</td><td>低（有偏）</td><td>高</td><td>中（兼顾偏差与方差）</td></tr>
+                    <tr><td>网络</td><td>策略+目标网络</td><td>1 个策略网络</td><td>1 网络两个头</td></tr>
+                    <tr><td>更新时机</td><td>每步</td><td>跑完整回合</td><td>跑完整回合</td></tr>
+                </tbody>
+            </table>
+            <p style="margin-top:12px;color:#666;">
+                往后看：把 A2C 的更新加上"裁剪"限制每次别走太大一步，就是 <strong>PPO</strong>——
+                目前最主流的策略优化算法。
+            </p>
+        </div>
+    </div>
+
+    <script src="/static/actor_critic.js"></script>
+</body>
+</html>
