@@ -11,6 +11,7 @@ async function runActorCritic() {
     const hidden_dim = parseInt(document.getElementById('ac-hidden').value);
     const lr = parseFloat(document.getElementById('ac-lr').value);
     const gamma = parseFloat(document.getElementById('ac-gamma').value);
+    const gae_lambda = parseFloat(document.getElementById('ac-gae-lambda').value);
     const value_coef = parseFloat(document.getElementById('ac-value-coef').value);
     const entropy_coef = parseFloat(document.getElementById('ac-entropy-coef').value);
     const n_runs = parseInt(document.getElementById('ac-nruns').value);
@@ -25,7 +26,7 @@ async function runActorCritic() {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                episodes, hidden_dim, lr, gamma,
+                episodes, hidden_dim, lr, gamma, gae_lambda,
                 value_coef, entropy_coef, n_runs
             })
         });

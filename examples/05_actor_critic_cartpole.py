@@ -144,20 +144,21 @@ def main():
     print(f"  动作数量: {action_dim}")
 
     # ===== 训练参数 =====
-    episodes = 500
+    episodes = 800
     hidden_dim = 128
     lr = 3e-3
     gamma = 0.99
+    gae_lambda = 0.95     # GAE 的 λ，降低优势的方差
     value_coef = 0.5      # Critic 损失权重
-    entropy_coef = 0.01   # 熵奖励权重
+    entropy_coef = 0.002  # 熵奖励权重（小一点，让策略最终能收敛到接近确定性）
 
     print("\n训练参数：")
     print(f"  回合数: {episodes}")
     print(f"  网络隐藏层: {hidden_dim} 个神经元（Actor 与 Critic 各一套独立网络）")
     print(f"  学习率: {lr}")
-    print(f"  折扣因子 γ: {gamma}")
+    print(f"  折扣因子 γ: {gamma}，GAE λ: {gae_lambda}")
     print(f"  Critic 损失权重: {value_coef}，熵奖励权重: {entropy_coef}")
-    print("\n相比 REINFORCE：多了一个 Critic，用'优势'代替'回报'，方差更小、更稳定。")
+    print("\n相比 REINFORCE：多了一个 Critic，用 GAE 估计的'优势'代替'回报'，方差更小、更稳定。")
 
     # ===== 创建智能体 =====
     agent = A2CAgent(
@@ -166,6 +167,7 @@ def main():
         hidden_dim=hidden_dim,
         lr=lr,
         gamma=gamma,
+        gae_lambda=gae_lambda,
         value_coef=value_coef,
         entropy_coef=entropy_coef,
     )
@@ -235,15 +237,17 @@ def main():
     print("=" * 55)
     print("""
 1. Actor-Critic: 演员(策略)负责动作，评委(价值)负责评估，两者一起训练
-2. 优势函数 A = G_t - V(s): 用"相对回报"代替"绝对回报"，大幅降低方差
-3. baseline 免费午餐: 减去 V(s) 不改变梯度期望(无偏)，只降方差
-4. 两个损失: actor_loss(策略) + critic_loss(回归) + 熵奖励(探索)
-5. 独立网络: Actor 和 Critic 各用一套网络，梯度互不干扰（共享网络会让
+2. 优势函数: 用"相对回报"代替"绝对回报"，大幅降低方差
+3. GAE: 用 λ 把单步 TD 和蒙特卡洛折中，进一步压低优势的方差
+4. 学习率衰减: 后期把步子调小，锁住已学到的好策略、防止训练后期突然崩溃——
+   GAE + 学习率衰减一起，是让 A2C 能稳定"解决"CartPole(连续100回合均值≥475)的关键
+5. 两个损失: actor_loss(策略) + critic_loss(回归) + 熵奖励(探索)
+6. 独立网络: Actor 和 Critic 各用一套网络，梯度互不干扰（共享网络会让
    Critic 的大梯度压制 Actor，导致策略学不动——这点在 CartPole 上很明显）
 
 对比 REINFORCE vs A2C：
   REINFORCE: 用整条轨迹的回报 G_t 加权 → 方差大、抖动剧烈
-  A2C:       用优势 G_t - V(s) 加权    → 方差小、训练更稳
+  A2C:       用 GAE 优势加权          → 方差小、训练更稳、能真正解决
 
 承上启下：
   - 往前看：A2C = REINFORCE(基于策略) + 价值估计(借鉴 DQN 的思想)

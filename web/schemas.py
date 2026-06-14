@@ -132,12 +132,17 @@ class ReinforceRunResponse(BaseModel):
 
 
 class A2CRunRequest(AsyncControl):
-    episodes: int = Field(default=500, ge=10, le=2000)
+    # A2C 训练到能"解决"CartPole 需要较多回合，默认给更长的超时
+    timeout_seconds: int = Field(
+        default=1200, ge=10, le=3600, description="任务超时秒数"
+    )
+    episodes: int = Field(default=800, ge=10, le=2000)
     hidden_dim: int = Field(default=128, ge=16, le=512)
     lr: float = Field(default=3e-3, gt=0, le=0.1)
     gamma: float = Field(default=0.99, ge=0, le=1)
+    gae_lambda: float = Field(default=0.95, ge=0, le=1)
     value_coef: float = Field(default=0.5, ge=0, le=10)
-    entropy_coef: float = Field(default=0.01, ge=0, le=1)
+    entropy_coef: float = Field(default=0.002, ge=0, le=1)
     n_runs: int = Field(default=1, ge=1, le=5)
 
 
