@@ -57,7 +57,7 @@ A2C 一次更新同时优化两个网络：
 |-----------|------------------|------------------|------------------------|
 | 学什么     | Q(s,a) 价值       | π(a|s) 策略       | π(a|s) 策略 + V(s) 价值 |
 | 谁选动作   | argmax Q（评委）  | 策略采样（演员）   | 策略采样（演员）        |
-| 评估信号   | TD 目标           | 蒙特卡洛回报 G_t   | 优势 A = G_t - V(s)    |
+| 评估信号   | TD 目标           | 蒙特卡洛回报 G_t   | 优势 A（用 GAE 估计）  |
 | 方差       | 低（但有偏）       | 高               | 中（兼顾偏差与方差）     |
 | 网络数量   | 2（策略+目标）     | 1（策略）         | 2（演员网络+评委网络）  |
 
@@ -133,9 +133,8 @@ class A2CAgent:
 
     训练流程（仍然是回合制，和 REINFORCE 一致）：
     1. 跑完一整个回合，记录 (log_prob, value, reward, entropy)
-    2. 从后往前算折扣回报 G_t（若回合是被截断而非真正结束，则用 V(末状态) 自举）
-    3. 优势 A_t = G_t - V(s_t)
-    4. 更新：actor 用 A_t 加权，critic 让 V 逼近 G_t
+    2. 用 GAE 计算每步优势 A_t（比朴素的 G_t - V(s) 方差小很多，训练更稳）
+    3. 更新：actor 用 A_t 加权，critic 让 V 逼近 returns = A_t + V(s)
     """
 
     def __init__(
@@ -145,12 +144,15 @@ class A2CAgent:
         hidden_dim=128,
         lr=3e-3,
         gamma=0.99,
+        gae_lambda=0.95,
         value_coef=0.5,
-        entropy_coef=0.01,
+        entropy_coef=0.002,
     ):
         self.gamma = gamma
+        self.gae_lambda = gae_lambda  # GAE 的 λ，权衡偏差与方差（见 update）
         self.value_coef = value_coef  # Critic 损失的权重 c1
         self.entropy_coef = entropy_coef  # 熵奖励的权重 c2
+        self.lr0 = lr  # 初始学习率（训练中会逐渐衰减，见 anneal_lr）
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         self.net = ActorCriticNetwork(state_dim, action_dim, hidden_dim).to(self.device)
@@ -186,6 +188,23 @@ class A2CAgent:
         """记录一步奖励"""
         self.rewards.append(reward)
 
+    def anneal_lr(self, frac):
+        """
+        按训练进度线性衰减学习率：从 lr0 降到 lr0 的 1/10。
+
+        为什么要衰减？单回合更新的 A2C 在学到接近最优后，若学习率仍然很大，
+        偶尔一批"运气差"的回合就可能把策略一脚踹下最优点（灾难性遗忘/崩溃），
+        表现为训练后期奖励突然从 ~500 暴跌。后期把步子调小，就能稳稳"锁住"
+        已经学到的好策略——这是让 A2C 能稳定"解决"CartPole 的最后一块拼图。
+
+        参数:
+            frac: 训练进度，0（开始）→ 1（结束）
+        """
+        frac = min(max(frac, 0.0), 1.0)
+        lr = self.lr0 * (1.0 - 0.9 * frac)
+        for group in self.optimizer.param_groups:
+            group["lr"] = lr
+
     def update(self, last_state=None, bootstrap=False):
         """
         回合结束后更新 Actor 和 Critic
@@ -202,41 +221,54 @@ class A2CAgent:
         if not self.rewards:
             return 0.0, 0.0, 0.0
 
-        # ===== 第一步：计算折扣回报 G_t =====
-        # 若回合被截断，用 Critic 对末状态的估值作为"未来回报"的起点（自举）
-        if bootstrap and last_state is not None:
-            with torch.no_grad():
-                state_t = torch.FloatTensor(last_state).unsqueeze(0).to(self.device)
-                _, next_value = self.net(state_t)
-                G = next_value.squeeze().item()
-        else:
-            G = 0.0
-
-        returns = []
-        for r in reversed(self.rewards):
-            G = r + self.gamma * G
-            returns.insert(0, G)
-        returns = torch.FloatTensor(returns).to(self.device)
-
         values = torch.stack(self.values)
         log_probs = torch.stack(self.log_probs)
         entropies = torch.stack(self.entropies)
+        v_det = values.detach()
 
-        # ===== 第二步：计算优势 A_t = G_t - V(s_t) =====
-        # 注意 .detach()：算 actor 损失时，优势只当"权重"，
-        # 不能让梯度从这里回传到 Critic（Critic 由 critic_loss 单独训练）。
-        # 这里**不**再对优势做标准化：Critic 本身已经充当了 baseline，
-        # 若再按单个回合标准化优势，会把"这一整个回合是好是坏"的信息抹掉
-        # （短回合里只剩"步在回合中的先后"这种无用信号），反而学不动。
-        advantages = returns - values.detach()
+        # ===== 第一步：用 GAE 计算优势 A_t =====
+        # 朴素优势 A_t = G_t - V(s_t) 里的 G_t 是整条轨迹的回报，方差很大，
+        # 训练到后期容易"忽好忽坏"甚至崩溃。GAE（广义优势估计）用一个 λ
+        # 把"只看一步的 TD 误差"和"看到底的蒙特卡洛"平滑地折中起来：
+        #
+        #   δ_t = r_t + γ·V(s_{t+1}) − V(s_t)        ← 单步 TD 误差
+        #   A_t = δ_t + (γλ)·δ_{t+1} + (γλ)²·δ_{t+2} + ...
+        #
+        # λ=0 → 只用一步 TD（偏差大、方差小）；λ=1 → 退化成蒙特卡洛（偏差小、
+        # 方差大）。λ≈0.95 兼顾两者，是让 A2C 能稳定解决 CartPole 的关键。
+
+        # V(s_{t+1})：用每一步的下一个状态价值。回合的最后一步要分情况：
+        # - 真正失败结束(terminated)：没有未来了，下一个状态价值 = 0
+        # - 被截断(truncated)：杆还没倒，用 Critic 对末状态的估值自举
+        if bootstrap and last_state is not None:
+            with torch.no_grad():
+                state_t = torch.FloatTensor(last_state).unsqueeze(0).to(self.device)
+                _, last_v = self.net(state_t)
+                last_v = last_v.squeeze().reshape(1)
+        else:
+            last_v = torch.zeros(1, device=self.device)
+        next_values = torch.cat([v_det[1:], last_v])
+
+        rewards_t = torch.FloatTensor(self.rewards).to(self.device)
+        deltas = rewards_t + self.gamma * next_values - v_det
+
+        # 从后往前累加，得到每一步的 GAE 优势
+        advantages = torch.zeros_like(deltas)
+        gae = 0.0
+        for i in range(len(deltas) - 1, -1, -1):
+            gae = deltas[i] + self.gamma * self.gae_lambda * gae
+            advantages[i] = gae
+
+        # Critic 的回归目标：returns = 优势 + V(s)，等价于 GAE 估计出的"该状态值多少"
+        returns = advantages + v_det
 
         # ===== 第三步：三部分损失 =====
         # 三个损失都用 mean（按步求平均）而非 sum，这样它们的量级互相可比、
         # 训练更稳定（sum 会让长回合的损失数值忽大忽小）。
-        # 1) Actor：让优势大的动作概率上升
-        actor_loss = -(log_probs * advantages).mean()
-        # 2) Critic：让 V(s) 回归到真实回报 G_t（回归问题）
-        critic_loss = nn.functional.mse_loss(values, returns)
+        # 1) Actor：让优势大的动作概率上升（优势 detach，只当权重不回传梯度）
+        actor_loss = -(log_probs * advantages.detach()).mean()
+        # 2) Critic：让 V(s) 回归到 GAE 目标 returns（回归问题）
+        critic_loss = nn.functional.mse_loss(values, returns.detach())
         # 3) 熵奖励：鼓励保持随机性（最大化熵 = 最小化 -熵）
         entropy_loss = -entropies.mean()
 
@@ -287,6 +319,8 @@ def train_a2c(
     for ep in range(episodes):
         if should_stop and should_stop():
             break
+        # 随训练进度衰减学习率，稳住后期已学到的策略
+        agent.anneal_lr(ep / max(episodes, 1))
         state, _ = env.reset()
         total_reward = 0.0
         truncated = False
@@ -322,12 +356,13 @@ def train_a2c(
 
 
 def run_a2c_experiment(
-    episodes=500,
+    episodes=800,
     hidden_dim=128,
     lr=3e-3,
     gamma=0.99,
+    gae_lambda=0.95,
     value_coef=0.5,
-    entropy_coef=0.01,
+    entropy_coef=0.002,
     max_steps=500,
     n_runs=1,
     seed=None,
@@ -361,6 +396,7 @@ def run_a2c_experiment(
             hidden_dim=hidden_dim,
             lr=lr,
             gamma=gamma,
+            gae_lambda=gae_lambda,
             value_coef=value_coef,
             entropy_coef=entropy_coef,
         )
@@ -422,6 +458,7 @@ def run_a2c_experiment(
             "hidden_dim": hidden_dim,
             "lr": lr,
             "gamma": gamma,
+            "gae_lambda": gae_lambda,
             "value_coef": value_coef,
             "entropy_coef": entropy_coef,
             "n_runs": n_runs,

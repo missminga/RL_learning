@@ -27,8 +27,8 @@
             <div class="params-grid">
                 <div class="param-item">
                     <label for="ac-episodes">训练回合 (episodes)</label>
-                    <input type="number" id="ac-episodes" value="500" min="10" max="2000">
-                    <span class="hint">10 ~ 2000</span>
+                    <input type="number" id="ac-episodes" value="800" min="10" max="2000">
+                    <span class="hint">800 左右通常能解决 CartPole</span>
                 </div>
                 <div class="param-item">
                     <label for="ac-hidden">隐藏层神经元数</label>
@@ -50,14 +50,19 @@
                     <span class="hint">未来奖励的折扣</span>
                 </div>
                 <div class="param-item">
+                    <label for="ac-gae-lambda">GAE λ</label>
+                    <input type="number" id="ac-gae-lambda" value="0.95" min="0" max="1" step="0.01">
+                    <span class="hint">优势估计的偏差/方差权衡</span>
+                </div>
+                <div class="param-item">
                     <label for="ac-value-coef">Critic 损失权重</label>
                     <input type="number" id="ac-value-coef" value="0.5" min="0" max="10" step="0.1">
                     <span class="hint">评委损失在总损失里的比重</span>
                 </div>
                 <div class="param-item">
                     <label for="ac-entropy-coef">熵奖励权重</label>
-                    <input type="number" id="ac-entropy-coef" value="0.01" min="0" max="1" step="0.01">
-                    <span class="hint">鼓励探索，防止过早收敛</span>
+                    <input type="number" id="ac-entropy-coef" value="0.002" min="0" max="1" step="0.001">
+                    <span class="hint">鼓励探索；过大策略学不到最优，过小易崩溃</span>
                 </div>
                 <div class="param-item">
                     <label for="ac-nruns">重复训练次数</label>
@@ -92,7 +97,8 @@
                 <li><strong>Actor（演员）</strong>：策略网络 π(a|s)，决定选哪个动作（和 REINFORCE 一样）</li>
                 <li><strong>Critic（评委）</strong>：价值网络 V(s)，估计"这个状态大概值多少分"</li>
                 <li><strong>优势 Advantage</strong>：A = G_t − V(s)，"这个动作比该状态平均水平好多少"</li>
-                <li><strong>降方差</strong>：减去 baseline V(s) 不改变梯度期望（无偏），却大幅降低方差</li>
+                <li><strong>GAE</strong>：用 λ 把单步 TD 和蒙特卡洛折中，进一步压低优势方差</li>
+                <li><strong>学习率衰减</strong>：后期把步子调小，锁住已学到的好策略、防止训练后期突然崩溃</li>
                 <li><strong>两个损失</strong>：actor_loss（策略）+ critic_loss（回归）+ 熵奖励（探索）</li>
                 <li><strong>独立网络</strong>：Actor 和 Critic 各用一套网络，梯度互不干扰，训练更稳</li>
             </ul>
