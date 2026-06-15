@@ -9,6 +9,19 @@
 
 提供 FastAPI + 前端页面 + 异步训练任务接口。
 
+## 在线访问
+
+🚀 **在线 Demo（部署于 Render）：https://rl-learning.onrender.com**
+
+各页面：
+- 多臂老虎机：https://rl-learning.onrender.com/
+- Q-Learning GridWorld：https://rl-learning.onrender.com/gridworld
+- DQN CartPole：https://rl-learning.onrender.com/cartpole
+- REINFORCE：https://rl-learning.onrender.com/policy-gradient
+- A2C（Actor-Critic）：https://rl-learning.onrender.com/actor-critic
+
+> 注：使用 Render 免费实例，长时间无访问会休眠，首次打开需等待约 30~60 秒唤醒。
+
 ---
 
 ## 1. 主入口与项目结构
