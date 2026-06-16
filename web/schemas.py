@@ -165,6 +165,43 @@ class A2CRunResponse(BaseModel):
     params: dict[str, Any] = Field(default_factory=dict)
 
 
+class PPORunRequest(AsyncControl):
+    # PPO 收敛比 A2C 快，但默认仍给较长超时以防多次重复训练
+    timeout_seconds: int = Field(
+        default=1200, ge=10, le=3600, description="任务超时秒数"
+    )
+    episodes: int = Field(default=500, ge=10, le=2000)
+    hidden_dim: int = Field(default=128, ge=16, le=512)
+    lr: float = Field(default=3e-3, gt=0, le=0.1)
+    gamma: float = Field(default=0.99, ge=0, le=1)
+    gae_lambda: float = Field(default=0.95, ge=0, le=1)
+    clip_eps: float = Field(default=0.2, gt=0, le=1)
+    value_coef: float = Field(default=0.5, ge=0, le=10)
+    entropy_coef: float = Field(default=0.01, ge=0, le=1)
+    update_epochs: int = Field(default=10, ge=1, le=50)
+    minibatch_size: int = Field(default=64, ge=8, le=512)
+    n_runs: int = Field(default=1, ge=1, le=5)
+
+
+class PPOSummary(BaseModel):
+    final_avg_reward: float
+    final_avg_steps: float
+    max_reward: float
+    solved_episode: int | None
+
+
+class PPORunResponse(BaseModel):
+    episodes: int
+    avg_rewards: list[float]
+    avg_steps: list[float]
+    avg_losses: list[float]
+    avg_actor_losses: list[float]
+    avg_critic_losses: list[float]
+    summary: PPOSummary
+    seed: int | None = None
+    params: dict[str, Any] = Field(default_factory=dict)
+
+
 class TaskSubmitResponse(BaseModel):
     task_id: str
     status: str

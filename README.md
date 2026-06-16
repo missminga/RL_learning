@@ -6,6 +6,7 @@
 - **CartPole + DQN**
 - **CartPole + REINFORCE**
 - **CartPole + A2C（Actor-Critic）**
+- **CartPole + PPO（近端策略优化）**
 
 提供 FastAPI + 前端页面 + 异步训练任务接口。
 
@@ -19,6 +20,7 @@
 - DQN CartPole：https://rl-learning.onrender.com/cartpole
 - REINFORCE：https://rl-learning.onrender.com/policy-gradient
 - A2C（Actor-Critic）：https://rl-learning.onrender.com/actor-critic
+- PPO（近端策略优化）：https://rl-learning.onrender.com/ppo
 
 > 注：使用 Render 免费实例，长时间无访问会休眠，首次打开需等待约 30~60 秒唤醒。
 
@@ -78,6 +80,7 @@ uv run uvicorn web.app:app --host 0.0.0.0 --port 8000
 - `http://127.0.0.1:8000/cartpole`
 - `http://127.0.0.1:8000/policy-gradient`
 - `http://127.0.0.1:8000/actor-critic`
+- `http://127.0.0.1:8000/ppo`
 - `http://127.0.0.1:8000/docs`（OpenAPI）
 
 ---
@@ -109,6 +112,10 @@ uv run uvicorn web.app:app --host 0.0.0.0 --port 8000
 - `POST /api/actor-critic/run`
 - `POST /api/actor-critic/run-sync`
 
+### PPO（近端策略优化）
+- `POST /api/ppo/run`
+- `POST /api/ppo/run-sync`
+
 > 所有训练请求均支持 `seed`（统一随机种子）与 `timeout_seconds`（任务超时保护）。
 
 ---
@@ -120,6 +127,7 @@ uv run uvicorn web.app:app --host 0.0.0.0 --port 8000
 - `/cartpole`：DQN CartPole 训练曲线
 - `/policy-gradient`：REINFORCE 训练曲线
 - `/actor-critic`：A2C（Actor-Critic）训练曲线（含 Actor / Critic 双损失）
+- `/ppo`：PPO（近端策略优化）训练曲线（裁剪策略 + 数据复用，含 Actor / Critic 双损失）
 
 ---
 

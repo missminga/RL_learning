@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PPO 近端策略优化 - RL 学习平台</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- 导航栏 -->
+        <nav class="nav-bar">
+            <a href="/" class="nav-link">01 多臂老虎机</a>
+            <a href="/gridworld" class="nav-link">02 Q-Learning GridWorld</a>
+            <a href="/cartpole" class="nav-link">03 DQN CartPole</a>
+            <a href="/policy-gradient" class="nav-link">04 REINFORCE</a>
+            <a href="/actor-critic" class="nav-link">05 A2C</a>
+            <a href="/ppo" class="nav-link active">06 PPO</a>
+        </nav>
+
+        <h1>PPO 近端策略优化 实验</h1>
+        <p class="subtitle">给 A2C 装上"安全带"——用裁剪锁住每步幅度，于是能把每批数据反复用，又快又稳</p>
+
+        <!-- 参数区 -->
+        <div class="params-panel">
+            <h2>实验参数</h2>
+            <div class="params-grid">
+                <div class="param-item">
+                    <label for="ppo-episodes">训练回合 (episodes)</label>
+                    <input type="number" id="ppo-episodes" value="500" min="10" max="2000">
+                    <span class="hint">PPO 通常 100 多回合就能解决 CartPole</span>
+                </div>
+                <div class="param-item">
+                    <label for="ppo-hidden">隐藏层神经元数</label>
+                    <select id="ppo-hidden">
+                        <option value="64">64</option>
+                        <option value="128" selected>128</option>
+                        <option value="256">256</option>
+                    </select>
+                    <span class="hint">Actor / Critic 网络每层的宽度</span>
+                </div>
+                <div class="param-item">
+                    <label for="ppo-lr">学习率 (lr)</label>
+                    <input type="number" id="ppo-lr" value="0.003" min="0.0001" max="0.1" step="0.0001">
+                    <span class="hint">Adam 优化器学习率</span>
+                </div>
+                <div class="param-item">
+                    <label for="ppo-gamma">折扣因子 γ</label>
+                    <input type="number" id="ppo-gamma" value="0.99" min="0" max="1" step="0.01">
+                    <span class="hint">未来奖励的折扣</span>
+                </div>
+                <div class="param-item">
+                    <label for="ppo-gae-lambda">GAE λ</label>
+                    <input type="number" id="ppo-gae-lambda" value="0.95" min="0" max="1" step="0.01">
+                    <span class="hint">优势估计的偏差/方差权衡</span>
+                </div>
+                <div class="param-item">
+                    <label for="ppo-clip-eps">裁剪范围 ε (clip)</label>
+                    <input type="number" id="ppo-clip-eps" value="0.2" min="0.01" max="1" step="0.01">
+                    <span class="hint">新旧策略概率比锁在 [1-ε, 1+ε]，PPO 的核心</span>
+                </div>
+                <div class="param-item">
+                    <label for="ppo-update-epochs">数据复用 epoch 数</label>
+                    <input type="number" id="ppo-update-epochs" value="10" min="1" max="50">
+                    <span class="hint">同一批数据反复训练几轮，PPO 比 A2C 高效的关键</span>
+                </div>
+                <div class="param-item">
+                    <label for="ppo-minibatch">minibatch 大小</label>
+                    <input type="number" id="ppo-minibatch" value="64" min="8" max="512">
+                    <span class="hint">每个小批的样本数</span>
+                </div>
+                <div class="param-item">
+                    <label for="ppo-value-coef">Critic 损失权重</label>
+                    <input type="number" id="ppo-value-coef" value="0.5" min="0" max="10" step="0.1">
+                    <span class="hint">评委损失在总损失里的比重</span>
+                </div>
+                <div class="param-item">
+                    <label for="ppo-entropy-coef">熵奖励权重</label>
+                    <input type="number" id="ppo-entropy-coef" value="0.01" min="0" max="1" step="0.001">
+                    <span class="hint">鼓励探索；过大策略学不到最优，过小易早熟</span>
+                </div>
+                <div class="param-item">
+                    <label for="ppo-nruns">重复训练次数</label>
+                    <input type="number" id="ppo-nruns" value="1" min="1" max="5">
+                    <span class="hint">多次取平均，更稳定</span>
+                </div>
+            </div>
+            <button id="ppo-run-btn" onclick="runPPO()">▶ 开始训练</button>
+            <span id="ppo-status-text"></span>
+        </div>
+
+        <!-- 图表区 -->
+        <div class="charts-panel" id="ppo-charts-panel" style="display:none;">
+            <div class="chart-box">
+                <div id="ppo-reward-chart" style="width:100%;height:350px;"></div>
+            </div>
+            <div class="chart-box">
+                <div id="ppo-loss-chart" style="width:100%;height:350px;"></div>
+            </div>
+        </div>
+
+        <!-- 摘要 -->
+        <div class="summary-panel" id="ppo-summary-panel" style="display:none;">
+            <h2>训练结果</h2>
+            <div id="ppo-summary-content"></div>
+        </div>
+
+        <!-- 概念说明 -->
+        <div class="info-panel">
+            <h2>核心概念</h2>
+            <ul>
+                <li><strong>重要性采样比值 r</strong>：r = π_新(a|s) / π_旧(a|s)，衡量更新后策略对某动作偏好的变化</li>
+                <li><strong>裁剪 clip</strong>：L = min(r·A, clip(r, 1−ε, 1+ε)·A)，把每步幅度锁在 ±ε 内，想迈大也迈不出去</li>
+                <li><strong>数据复用</strong>：有了裁剪这条"安全带"，同一批数据可反复训练 K 个 epoch，采样效率远高于 A2C</li>
+                <li><strong>优势标准化</strong>：减均值除标准差，让裁剪阈值 ε 有稳定一致的意义</li>
+                <li><strong>其余照搬 A2C</strong>：GAE 算优势、Critic 回归 returns、熵奖励、截断时用 V(末状态) 自举</li>
+            </ul>
+
+            <h2>A2C vs PPO 对比</h2>
+            <table>
+                <thead>
+                    <tr><th>特性</th><th>A2C</th><th>PPO</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>数据复用</td><td>一批更新 1 次</td><td>一批更新 K 个 epoch</td></tr>
+                    <tr><td>限制步长</td><td>无（靠小学习率硬撑）</td><td>clip 锁在 [1−ε, 1+ε]</td></tr>
+                    <tr><td>采样效率</td><td>低</td><td>高</td></tr>
+                    <tr><td>稳定性</td><td>后期易崩溃</td><td>裁剪保证不迈过头，稳得多</td></tr>
+                    <tr><td>解决 CartPole</td><td>约 800 回合</td><td>约 100 多回合</td></tr>
+                </tbody>
+            </table>
+            <p style="margin-top:12px;color:#666;">
+                PPO 是目前最主流的策略优化算法，<strong>ChatGPT 的 RLHF</strong>（基于人类反馈的强化学习）也用它。
+                理解了 A2C，PPO 只是在它之上加了"裁剪 + 数据复用"两板斧。
+            </p>
+        </div>
+    </div>
+
+    <script src="/static/ppo.js"></script>
+</body>
+</html>
