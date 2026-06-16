@@ -15,6 +15,7 @@ from web.routers import (
     cartpole,
     gridworld,
     policy_gradient,
+    ppo,
     tasks,
 )
 
@@ -47,6 +48,7 @@ app.include_router(gridworld.router)
 app.include_router(cartpole.router)
 app.include_router(policy_gradient.router)
 app.include_router(actor_critic.router)
+app.include_router(ppo.router)
 app.include_router(tasks.router)
 
 static_dir = Path(__file__).parent / "static"
@@ -81,3 +83,8 @@ async def policy_gradient_page():
 @app.get("/actor-critic")
 async def actor_critic_page():
     return FileResponse(str(static_dir / "actor_critic.html"))
+
+
+@app.get("/ppo")
+async def ppo_page():
+    return FileResponse(str(static_dir / "ppo.html"))
