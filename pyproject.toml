@@ -5,7 +5,8 @@ description = "Add your description here"
 requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.128.8",
-    "gymnasium>=1.2.3",
+    "gymnasium[mujoco]>=1.2.3",
+    "imageio-ffmpeg>=0.6.0",
     "matplotlib>=3.10.8",
     "numpy>=2.4.2",
     "torch>=2.10.0",

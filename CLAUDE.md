@@ -37,10 +37,13 @@ Examples are organized by progressive difficulty in `examples/`:
 - Core RL algorithms live in `core/` and are shared by CLI examples and the Web app
 - Web application (FastAPI + ECharts frontend) lives in `web/`
 
+The three layers mirror each other: each algorithm has a `core/` module, an `examples/` script, and a `web/routers/` + `web/static/` pair. When adding a new algorithm, add to all three and register the router in `web/app.py`.
+
 ## Key Dependencies
 
 - `numpy` - numerical computation
 - `gymnasium` (OpenAI Gym successor) - RL environments
+- `torch` (PyTorch) - neural networks for DQN and policy gradient methods
 - `matplotlib` - visualization of training results
 - `fastapi` + `uvicorn` - Web API server
 
