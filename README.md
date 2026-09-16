@@ -7,6 +7,7 @@
 - **CartPole + REINFORCE**
 - **CartPole + A2C（Actor-Critic）**
 - **CartPole + PPO（近端策略优化）**
+- **Ant（MuJoCo 四足机器人）+ 连续动作 PPO（高斯策略）**
 
 提供 FastAPI + 前端页面 + 异步训练任务接口。
 
